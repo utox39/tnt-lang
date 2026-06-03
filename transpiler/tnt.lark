@@ -1,0 +1,210 @@
+// ============================================================
+//  Lark Grammar for the TNT language
+//  EILP Project — TNT → C Transpiler
+// ============================================================
+
+start : import_section top_level_decl*
+
+// ============================================================
+// 1. IMPORTS
+// ============================================================
+
+import_section : import_stmt*
+
+import_stmt : "import" "local" LOCAL_PATH  -> import_local
+            | "import" IMPORT_PATH          -> import_system
+
+// Local path: ./path/to/file.h  or  ../path/file.h
+LOCAL_PATH : /\.\.?\/[^\s]+/
+
+// System path: stdio.h, stdlib.h, etc.
+IMPORT_PATH : /[a-zA-Z_][a-zA-Z0-9_\/]*(\.[a-zA-Z0-9_]+)?/
+
+// ============================================================
+// 2. TOP-LEVEL DECLARATIONS
+// ============================================================
+
+top_level_decl : struct_decl
+               | func_decl
+
+// ============================================================
+// 3. STRUCT
+// ============================================================
+
+struct_decl : "struct" IDENT "{" field_decl* "}" ";"
+
+field_decl : IDENT ":" type ";"
+
+// ============================================================
+// 4. FUNCTIONS
+// ============================================================
+
+func_decl : "fn" IDENT "(" param_list ")" "->" return_type block
+
+param_list : (param ("," param)*)?
+
+param : IDENT ":" type
+
+return_type : type
+
+// ============================================================
+// 5. TYPES
+// ============================================================
+
+type : "ref" type   -> ref_type
+     | base_type    -> plain_type
+     | array_type
+
+base_type : "int"
+           | "char"
+           | "void"
+           | "float"
+           | IDENT      // custom types (struct)
+
+array_type : base_type "[" expr? "]"
+
+// ============================================================
+// 6. BLOCK AND STATEMENTS
+// ============================================================
+
+block : "{" stmt* "}"
+
+stmt : var_decl_stmt
+     | const_decl_stmt
+     | if_stmt
+     | while_stmt
+     | for_stmt
+     | return_stmt
+     | break_stmt
+     | continue_stmt
+     | defer_stmt
+     | tnt_stmt
+     | expr_stmt
+
+// --- Variable / constant declarations ---
+var_decl_stmt   : "let"   IDENT ":" type ("=" expr)? ";"
+const_decl_stmt : "const" IDENT ":" type  "=" expr  ";"
+
+// --- Control flow ---
+if_stmt    : "if" "(" expr ")" block ("else" (if_stmt | block))?
+while_stmt : "while" "(" expr ")" block
+for_stmt   : "for" "(" for_init ";" expr ";" for_update ")" block
+
+for_init   : var_decl_stmt   -> for_init_decl
+           | expr ";"        -> for_init_expr
+           |                 -> for_init_empty
+
+// The semicolon of for_init is already consumed inside each alternative;
+// for_update does not end with ";"
+for_update : expr             -> for_update_expr
+           |                  -> for_update_empty
+
+return_stmt   : "return" expr? ";"
+break_stmt    : "break"    ";"
+continue_stmt : "continue" ";"
+
+// --- Special constructs ---
+defer_stmt : "defer" (block | expr_stmt)
+
+tnt_stmt : "tnt" expr ";"
+
+// --- Expression as statement (assignment, function call, …) ---
+expr_stmt : expr ";"
+
+// ============================================================
+// 7. EXPRESSIONS  (precedence increases downward)
+// ============================================================
+
+// Precedence (from lowest to highest):
+//   assignment    =
+//   OR            ||
+//   AND           &&
+//   equality      == !=
+//   relational    < > <= >=
+//   additive      + -
+//   multiplicative * / %
+//   unary         - ! ->  (deref)
+//   postfix       call, field access, index
+//   primary       literal, ident, ( expr )
+
+?expr : assign_expr
+
+?assign_expr : lvalue "=" assign_expr  -> assign
+             | or_expr
+
+// lvalue: anything that can appear on the left-hand side of an assignment
+lvalue : "->" lvalue          -> deref_lvalue
+       | lvalue "." IDENT     -> field_lvalue
+       | lvalue "[" expr "]"  -> index_lvalue
+       | IDENT                -> ident_lvalue
+
+?or_expr  : or_expr  "||" and_expr   -> or
+          | and_expr
+
+?and_expr : and_expr "&&" eq_expr    -> and
+          | eq_expr
+
+?eq_expr  : eq_expr  "==" rel_expr   -> eq
+          | eq_expr  "!=" rel_expr   -> neq
+          | rel_expr
+
+?rel_expr : rel_expr "<"  add_expr   -> lt
+          | rel_expr ">"  add_expr   -> gt
+          | rel_expr "<=" add_expr   -> le
+          | rel_expr ">=" add_expr   -> ge
+          | add_expr
+
+?add_expr : add_expr "+" mul_expr    -> add
+          | add_expr "-" mul_expr    -> sub
+          | mul_expr
+
+?mul_expr : mul_expr "*" unary_expr  -> mul
+          | mul_expr "/" unary_expr  -> div
+          | mul_expr "%" unary_expr  -> mod
+          | unary_expr
+
+?unary_expr : "-"  unary_expr        -> neg
+            | "!"  unary_expr        -> not
+            | "->" unary_expr        -> deref
+            | postfix_expr
+
+?postfix_expr : postfix_expr "(" arg_list ")"  -> call
+              | postfix_expr "." IDENT          -> field_access
+              | postfix_expr "[" expr "]"        -> index
+              | primary
+
+?primary : INT_LIT      -> int_lit
+         | FLOAT_LIT    -> float_lit
+         | CHAR_LIT     -> char_lit
+         | STRING_LIT   -> string_lit
+         | "true"       -> true_lit
+         | "false"      -> false_lit
+         | IDENT        -> ident
+         | "(" expr ")" -> paren_expr
+
+arg_list : (expr ("," expr)*)?
+
+// ============================================================
+// 8. LEXICAL TERMINALS
+// ============================================================
+
+// Identifiers
+IDENT : /[a-zA-Z_][a-zA-Z0-9_]*/
+
+// Numeric literals
+INT_LIT   : /0|[1-9][0-9]*/
+FLOAT_LIT : /[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?/
+
+// Character literal: 'a', '\n', '\t', '\\', '\''
+CHAR_LIT : /\'([^\'\\]|\\[ntr\\\'"])\'/
+
+// String literal: "hello \"world\""
+STRING_LIT : /\"([^\"\\]|\\[ntr\\\'"])*\"/
+
+// ============================================================
+// 9. WHITESPACE AND COMMENTS
+// ============================================================
+
+%ignore /[ \t\n\r]+/          // whitespace
+%ignore /\/\/[^\n]*/          // single-line comment
+%ignore /\/\*(.|\n)*?\*\//    // multi-line comment (non-nested)
