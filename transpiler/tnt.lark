@@ -1,6 +1,6 @@
 // ============================================================
-//  Lark Grammar for the TNT language
-//  EILP Project — TNT → C Transpiler
+//  Lark Grammar (earley) for the TNT language
+//  EILP Project — TNT -> C Transpiler
 // ============================================================
 
 start : import_section top_level_decl*
