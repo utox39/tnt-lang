@@ -1,0 +1,19 @@
+import stdio.h
+
+fn main() -> int {
+  let foo: int = 0;
+  let foo_ptr: ref int = ref foo;
+
+  printf("foo: %d\n", foo);
+  defer printf("defer foo: %d\n", foo + 1);
+
+  if (foo == 1) {
+    tnt 1;
+  }
+
+  if (foo != 0) {
+    tnt "foo != 0";
+  }
+
+  return 0;
+}
