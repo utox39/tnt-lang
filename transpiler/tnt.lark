@@ -106,7 +106,11 @@ continue_stmt : "continue" ";"
 // --- Special constructs ---
 defer_stmt : "defer" (block | expr_stmt)
 
-tnt_stmt : "tnt" expr ";"
+tnt_stmt : "tnt" tnt_arg ";"
+
+tnt_arg : STRING_LIT  -> tnt_string
+        | INT_LIT     -> tnt_int
+        | IDENT       -> tnt_var
 
 // --- Expression as statement (assignment, function call, …) ---
 expr_stmt : expr ";"
