@@ -1,5 +1,26 @@
 import stdio.h
 
+struct Point {
+  x: int;
+  y: int;
+};
+
+fn add(a: int, b: int) -> int {
+  return a + b;
+}
+
+fn add_point(p1: ref Point, p2: ref Point) -> Point {
+  // declare new point
+  let p3: Point;
+
+  // assing its fields
+  p3.x = p1.x + p2.x;
+  p3.y = p1.y + p2.y;
+
+  // then return
+  return p3;
+}
+
 fn main() -> int {
   let foo: int = 0;
   let foo_ptr: ref int = addr foo;
@@ -14,6 +35,9 @@ fn main() -> int {
   if (foo != 0) {
     tnt "foo != 0";
   }
+
+  let bar: int = 4;
+  add(foo, bar);
 
   return 0;
 }
