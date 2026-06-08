@@ -111,8 +111,9 @@ tnt_stmt : "tnt" tnt_arg ";"
 tnt_arg : STRING_LIT  -> tnt_string
         | INT_LIT     -> tnt_int
         | IDENT       -> tnt_var
+        | "->" IDENT  -> tnt_deref
 
-// --- Expression as statement (assignment, function call, …) ---
+// --- Expression as statement (assignment, function call, ...) ---
 expr_stmt : expr ";"
 
 // ============================================================
