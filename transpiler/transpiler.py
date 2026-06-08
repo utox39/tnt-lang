@@ -1,5 +1,8 @@
 from lark import Lark
 
+from ast_tree import AstTransformer
+from ast_pretty import pretty
+
 
 def main():
     source_code = ""
@@ -11,9 +14,10 @@ def main():
         grammar = f.read()
 
     parser = Lark(grammar, parser="lalr")
-    tree = parser.parse(source_code)
+    parse_tree = parser.parse(source_code)
 
-    print(tree.pretty())
+    ast = AstTransformer().transform(parse_tree)
+    print(pretty(ast))
 
 
 if __name__ == "__main__":
