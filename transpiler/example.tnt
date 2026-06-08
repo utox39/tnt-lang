@@ -2,13 +2,13 @@ import stdio.h
 
 fn main() -> int {
   let foo: int = 0;
-  let foo_ptr: ref int = ref foo;
+  let foo_ptr: ref int = addr foo;
 
   printf("foo: %d\n", foo);
   defer printf("defer foo: %d\n", foo + 1);
 
   if (foo == 1) {
-    tnt 1;
+    tnt ->foo_ptr;
   }
 
   if (foo != 0) {

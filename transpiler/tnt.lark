@@ -171,6 +171,7 @@ lvalue : "->" lvalue          -> deref_lvalue
 ?unary_expr : "-"  unary_expr        -> neg
             | "!"  unary_expr        -> not
             | "->" unary_expr        -> deref
+            | "addr" unary_expr      -> addr
             | postfix_expr
 
 ?postfix_expr : postfix_expr "(" arg_list ")"  -> call
