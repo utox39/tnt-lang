@@ -10,7 +10,7 @@ def main():
     with open("tnt.lark") as f:
         grammar = f.read()
 
-    parser = Lark(grammar, parser="earley")
+    parser = Lark(grammar, parser="lalr")
     tree = parser.parse(source_code)
 
     print(tree.pretty())
