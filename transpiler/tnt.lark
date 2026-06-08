@@ -1,5 +1,5 @@
 // ============================================================
-//  Lark Grammar (earley) for the TNT language
+//  Lark Grammar (lalr) for the TNT language
 //  EILP Project — TNT -> C Transpiler
 // ============================================================
 
@@ -90,12 +90,14 @@ if_stmt    : "if" "(" expr ")" block ("else" (if_stmt | block))?
 while_stmt : "while" "(" expr ")" block
 for_stmt   : "for" "(" for_init ";" expr ";" for_update ")" block
 
-for_init   : var_decl_stmt   -> for_init_decl
-           | expr ";"        -> for_init_expr
-           |                 -> for_init_empty
+// for_var_decl mirrors var_decl_stmt without the trailing ";";
+// the separator semicolons live exclusively in for_stmt.
+for_var_decl : "let" IDENT ":" type ("=" expr)?
 
-// The semicolon of for_init is already consumed inside each alternative;
-// for_update does not end with ";"
+for_init   : for_var_decl  -> for_init_decl
+           | expr           -> for_init_expr
+           |                -> for_init_empty
+
 for_update : expr             -> for_update_expr
            |                  -> for_update_empty
 
@@ -134,14 +136,10 @@ expr_stmt : expr ";"
 
 ?expr : assign_expr
 
-?assign_expr : lvalue "=" assign_expr  -> assign
+// lvalue validity (ident, deref, field_access, index) is checked
+// by the code-generator; the grammar accepts any or_expr as target.
+?assign_expr : or_expr "=" assign_expr  -> assign
              | or_expr
-
-// lvalue: anything that can appear on the left-hand side of an assignment
-lvalue : "->" lvalue          -> deref_lvalue
-       | lvalue "." IDENT     -> field_lvalue
-       | lvalue "[" expr "]"  -> index_lvalue
-       | IDENT                -> ident_lvalue
 
 ?or_expr  : or_expr  "||" and_expr   -> or
           | and_expr
