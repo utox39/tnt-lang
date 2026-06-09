@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Union
 
-
 # === TYPES ===
 
 
@@ -134,6 +133,14 @@ class Index:
     idx: Expr
 
 
+@dataclass
+class CastExpr:
+    """<expr> as <type>"""
+
+    expr: Expr
+    target_type: Type
+
+
 Expr = Union[
     IntLit,
     FloatLit,
@@ -147,6 +154,7 @@ Expr = Union[
     Call,
     FieldAccess,
     Index,
+    CastExpr,
 ]
 
 

@@ -1,48 +1,48 @@
 from __future__ import annotations
 
-from lark import Transformer
-
 from ast_nodes import (
-    ImportLocal,
-    ImportSystem,
-    RefType,
-    PlainType,
     ArrayType,
-    IntLit,
-    FloatLit,
-    CharLit,
-    StringLit,
-    BoolLit,
-    Ident,
     Assign,
     BinOp,
-    UnaryOp,
-    Call,
-    FieldAccess,
-    Index,
-    TntString,
-    TntInt,
-    TntVar,
-    TntDeref,
     Block,
-    VarDeclStmt,
-    ConstDeclStmt,
-    IfStmt,
-    WhileStmt,
-    ForStmt,
-    ForVarDecl,
-    ReturnStmt,
+    BoolLit,
     BreakStmt,
+    Call,
+    CastExpr,
+    CharLit,
+    ConstDeclStmt,
     ContinueStmt,
     DeferStmt,
-    TntStmt,
     ExprStmt,
+    FieldAccess,
     FieldDecl,
-    StructDecl,
-    Param,
+    FloatLit,
+    ForStmt,
+    ForVarDecl,
     FuncDecl,
+    Ident,
+    IfStmt,
+    ImportLocal,
+    ImportSystem,
+    Index,
+    IntLit,
+    Param,
+    PlainType,
     Program,
+    RefType,
+    ReturnStmt,
+    StringLit,
+    StructDecl,
+    TntDeref,
+    TntInt,
+    TntStmt,
+    TntString,
+    TntVar,
+    UnaryOp,
+    VarDeclStmt,
+    WhileStmt,
 )
+from lark import Transformer
 
 
 class AstTransformer(Transformer):
@@ -263,6 +263,10 @@ class AstTransformer(Transformer):
 
     def mod(self, items):
         return BinOp("%", items[0], items[1])
+
+    def cast_expr(self, items):
+        # Transform an 'as' casting expression into a CastExpr AST node
+        return CastExpr(expr=items[0], target_type=items[1])
 
     # Unary operators — "not" is a Python keyword; defined via setattr below.
     def neg(self, items):
