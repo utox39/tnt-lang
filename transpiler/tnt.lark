@@ -161,10 +161,13 @@ expr_stmt : expr ";"
           | add_expr "-" mul_expr    -> sub
           | mul_expr
 
-?mul_expr : mul_expr "*" unary_expr  -> mul
-          | mul_expr "/" unary_expr  -> div
-          | mul_expr "%" unary_expr  -> mod
-          | unary_expr
+?mul_expr : mul_expr "*" cast_expr   -> mul
+          | mul_expr "/" cast_expr   -> div
+          | mul_expr "%" cast_expr   -> mod
+          | cast_expr
+
+?cast_expr : unary_expr "as" type    -> cast_expr
+           | unary_expr
 
 ?unary_expr : "-"  unary_expr        -> neg
             | "!"  unary_expr        -> not

@@ -1,43 +1,44 @@
 from __future__ import annotations
 
 from ast_nodes import (
-    ImportLocal,
-    ImportSystem,
-    RefType,
-    PlainType,
     ArrayType,
-    IntLit,
-    FloatLit,
-    CharLit,
-    StringLit,
-    BoolLit,
-    Ident,
     Assign,
     BinOp,
-    UnaryOp,
-    Call,
-    FieldAccess,
-    Index,
-    TntString,
-    TntInt,
-    TntVar,
-    TntDeref,
     Block,
-    VarDeclStmt,
-    ConstDeclStmt,
-    IfStmt,
-    WhileStmt,
-    ForStmt,
-    ForVarDecl,
-    ReturnStmt,
+    BoolLit,
     BreakStmt,
+    Call,
+    CastExpr,
+    CharLit,
+    ConstDeclStmt,
     ContinueStmt,
     DeferStmt,
-    TntStmt,
     ExprStmt,
-    StructDecl,
+    FieldAccess,
+    FloatLit,
+    ForStmt,
+    ForVarDecl,
     FuncDecl,
+    Ident,
+    IfStmt,
+    ImportLocal,
+    ImportSystem,
+    Index,
+    IntLit,
+    PlainType,
     Program,
+    RefType,
+    ReturnStmt,
+    StringLit,
+    StructDecl,
+    TntDeref,
+    TntInt,
+    TntStmt,
+    TntString,
+    TntVar,
+    UnaryOp,
+    VarDeclStmt,
+    WhileStmt,
 )
 
 _I = "  "  # one indent level
@@ -231,6 +232,9 @@ def _pp(node, depth: int) -> list[str]:
 
         case ExprStmt(expr):
             return [f"{pad}ExprStmt  {fmt_expr(expr)}"]
+
+        case CastExpr(expr, target_type):
+            return [f"{pad}CastExpr  {fmt_expr(expr)} as {fmt_type(target_type)}"]
 
         case _:
             return [f"{pad}{repr(node)}"]
