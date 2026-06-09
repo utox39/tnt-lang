@@ -58,10 +58,10 @@ class TntSemanticError(Exception):
         yellow = "\033[1;33m"
         reset = "\033[0m"
 
-        print(f"\n🛑 {red}Error: {self.title}{reset}")
+        print(f"\n {red}Error: {self.title}{reset}")
         print(f"   {self.details}")
         if self.hint:
-            print(f"\n💡 {yellow}Hint:{reset} {self.hint}")
+            print(f"\n {yellow}Hint:{reset} {self.hint}")
         print()
         sys.exit(1)
 
