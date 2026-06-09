@@ -1,4 +1,5 @@
 import stdio.h
+import local ./path/lib.tnt
 
 struct Point {
   x: int;

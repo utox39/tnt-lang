@@ -2,6 +2,7 @@ from lark import Lark
 
 from ast_tree import AstTransformer
 from ast_pretty import pretty
+from semantic import SemanticAnalyzer
 
 
 def main():
@@ -18,6 +19,11 @@ def main():
 
     ast = AstTransformer().transform(parse_tree)
     print(pretty(ast))
+
+    analyzer = SemanticAnalyzer()
+    analyzer.analyze(ast)
+
+    print("\n== INFO == Semantic analysis passed")
 
 
 if __name__ == "__main__":
