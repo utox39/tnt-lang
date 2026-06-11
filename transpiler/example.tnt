@@ -35,24 +35,20 @@ fn main() -> int {
 
   if (foo != 0) {
     tnt "foo != 0";
+  } else {
+    tnt 2;
   }
 
   let bar: int = 4;
   add(foo, bar);
 
-  // ---  CASTING TNT LANGUAGE---
+  let boo: float = bar as float;
 
-  // 1. Correct Casting  (Secure Promotion  from int to float)
-  let intero_sicuro: int = 10;
-  let float_convertito: float = intero_sicuro as float;
+  let pi: float = 3.99;
+  let three: int = pi as int;
 
-  // 2. Wrong Casting (Trunc from float a int loss information)
-  let pi_greco: float = 3.99;
-  let intero_tagliato: int = pi_greco as int;
-
-  // 3. Semantic error: impossible casting
   let p_test: Point;
-  let errore_grave: int = p_test as int;
+  let error: int = p_test as int;
 
   return 0;
 }
