@@ -9,6 +9,7 @@ from ast_nodes import (
     BoolLit,
     BreakStmt,
     Call,
+    CastExpr,
     CharLit,
     ConstDeclStmt,
     ContinueStmt,
@@ -58,10 +59,10 @@ class TntSemanticError(Exception):
         yellow = "\033[1;33m"
         reset = "\033[0m"
 
-        print(f"\n {red}Error: {self.title}{reset}")
+        print(f"\n{red}Error: {self.title}{reset}")
         print(f"   {self.details}")
         if self.hint:
-            print(f"\n {yellow}Hint:{reset} {self.hint}")
+            print(f"\n{yellow}Hint:{reset} {self.hint}")
         print()
         sys.exit(1)
 
@@ -84,7 +85,10 @@ def type_to_str(t: Type | None) -> str:
 
 class SymbolTable:
     def __init__(self) -> None:
+        # Variable scopes
         self.scopes: list[dict[str, Type]] = [{}]
+        # Struct registry: maps struct_name -> dict[field_name, field_type]
+        self.structs: dict[str, dict[str, Type]] = {}
 
     def enter_scope(self) -> None:
         self.scopes.append({})
@@ -117,6 +121,26 @@ class SymbolTable:
         )
         err.print_and_exit()
 
+    def define_struct(self, name: str, fields: dict[str, Type]) -> None:
+        if name in self.structs:
+            err = TntSemanticError(
+                title="Duplicate Struct",
+                details=f"A struct named '{name}' is already defined.",
+                hint="Rename this struct.",
+            )
+            err.print_and_exit()
+        self.structs[name] = fields
+
+    def get_struct(self, name: str) -> dict[str, Type]:
+        if name not in self.structs:
+            err = TntSemanticError(
+                title="Undefined Struct",
+                details=f"You tried to use struct '{name}', but it hasn't been defined.",
+                hint="Ensure the struct is declared before you use it.",
+            )
+            err.print_and_exit()
+        return self.structs[name]
+
 
 # ==========================================
 # SEMANTIC ANALYZER
@@ -127,6 +151,7 @@ class SemanticAnalyzer:
     def __init__(self) -> None:
         self.symtab = SymbolTable()
         self.current_function_return_type: Type | None = None
+        self.loop_depth: int = 0  # Used to validate break/continue
 
         # Pre-load system APIs
         self.symtab.declare("printf", PlainType("void"))
@@ -190,7 +215,21 @@ class SemanticAnalyzer:
         self.symtab.exit_scope()
 
     def visit_StructDecl(self, node: StructDecl) -> None:
-        pass
+        fields: dict[str, Type] = {}
+
+        node_fields = getattr(node, "fields", getattr(node, "decls", []))
+
+        for field in node_fields:
+            if field.name in fields:
+                err = TntSemanticError(
+                    title="Duplicate Struct Field",
+                    details=f"Field '{field.name}' is defined multiple times in '{node.name}'.",
+                    hint="Ensure all fields within a struct have unique names.",
+                )
+                err.print_and_exit()
+            fields[field.name] = field.type
+
+        self.symtab.define_struct(node.name, fields)
 
     # ==========================================
     # STATEMENTS
@@ -225,7 +264,10 @@ class SemanticAnalyzer:
 
     def visit_WhileStmt(self, node: WhileStmt) -> None:
         self.analyze(node.cond)
+
+        self.loop_depth += 1
         self.analyze(node.body)
+        self.loop_depth -= 1
 
     def visit_ForVarDecl(self, node: ForVarDecl) -> None:
         if node.init:
@@ -236,7 +278,6 @@ class SemanticAnalyzer:
         self.symtab.declare(node.name, node.type)
 
     def visit_ForStmt(self, node: ForStmt) -> None:
-        # The entire for-loop gets a scope so the init variable doesn't leak
         self.symtab.enter_scope()
         if node.init:
             self.analyze(node.init)
@@ -244,7 +285,11 @@ class SemanticAnalyzer:
             self.analyze(node.cond)
         if node.update:
             self.analyze(node.update)
+
+        self.loop_depth += 1
         self.analyze(node.body)
+        self.loop_depth -= 1
+
         self.symtab.exit_scope()
 
     def visit_ReturnStmt(self, node: ReturnStmt) -> None:
@@ -256,10 +301,22 @@ class SemanticAnalyzer:
                 )
 
     def visit_BreakStmt(self, node: BreakStmt) -> None:
-        pass
+        if self.loop_depth <= 0:
+            err = TntSemanticError(
+                title="Invalid Control Flow",
+                details="A 'break' statement can only be used inside a loop.",
+                hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
+            )
+            err.print_and_exit()
 
     def visit_ContinueStmt(self, node: ContinueStmt) -> None:
-        pass
+        if self.loop_depth <= 0:
+            err = TntSemanticError(
+                title="Invalid Control Flow",
+                details="A 'continue' statement can only be used inside a loop.",
+                hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
+            )
+            err.print_and_exit()
 
     def visit_DeferStmt(self, node: DeferStmt) -> None:
         self.analyze(node.body)
@@ -305,7 +362,6 @@ class SemanticAnalyzer:
         if node.op == "->":
             if isinstance(operand_type, RefType):
                 return operand_type.inner
-            # Ideally, throw an error if trying to dereference a non-pointer
         return operand_type
 
     def visit_Call(self, node: Call) -> Type:
@@ -315,18 +371,66 @@ class SemanticAnalyzer:
         return return_type
 
     def visit_FieldAccess(self, node: FieldAccess) -> Type:
-        self.analyze(node.obj)
-        # Until we parse struct fields deeply, assume int
-        return PlainType("int")
+        obj_type = self.analyze(node.obj)
+
+        base_type = obj_type
+        if isinstance(base_type, RefType):
+            base_type = base_type.inner
+
+        if not isinstance(base_type, PlainType):
+            err = TntSemanticError(
+                title="Invalid Field Access",
+                details=f"Cannot access fields on a non-struct type '{type_to_str(obj_type)}'.",
+                hint="Ensure the variable is a valid struct or a reference to a struct.",
+            )
+            err.print_and_exit()
+
+        struct_name = base_type.name
+        struct_def = self.symtab.get_struct(struct_name)
+
+        field_name = (
+            node.field
+            if isinstance(node.field, str)
+            else getattr(node.field, "name", str(node.field))
+        )
+
+        if field_name not in struct_def:
+            err = TntSemanticError(
+                title="Unknown Field",
+                details=f"Struct '{struct_name}' has no field named '{field_name}'.",
+                hint=f"Check the definition of '{struct_name}' for valid fields.",
+            )
+            err.print_and_exit()
+
+        return struct_def[field_name]
 
     def visit_Index(self, node: Index) -> Type:
         obj_type = self.analyze(node.obj)
-        self.analyze(node.idx)  # Ensure index is analyzed
+        self.analyze(node.idx)
         if isinstance(obj_type, ArrayType):
             return obj_type.element
         if isinstance(obj_type, RefType):
             return obj_type.inner
         return PlainType("unknown")
+
+    def visit_CastExpr(self, node: CastExpr) -> Type:
+        expr_type = self.analyze(node.expr)
+        target_type = node.target_type
+
+        # Helper function to identify custom structs
+        def is_struct(t: Type) -> bool:
+            return isinstance(t, PlainType) and t.name in self.symtab.structs
+
+        # Explicitly prevent developers from casting custom structs into primitive types
+        if is_struct(expr_type) or is_struct(target_type):
+            err = TntSemanticError(
+                title="Invalid Cast",
+                details=f"Cannot cast from '{type_to_str(expr_type)}' to '{type_to_str(target_type)}'.",
+                hint="Structs cannot be directly cast. You must access their individual fields.",
+            )
+            err.print_and_exit()
+
+        return target_type
 
     def visit_Ident(self, node: Ident) -> Type:
         return self.symtab.lookup(node.name)
@@ -342,7 +446,6 @@ class SemanticAnalyzer:
         return PlainType("char")
 
     def visit_StringLit(self, node: StringLit) -> RefType:
-        # A string literal in C is usually an array of chars or a char pointer
         return RefType(PlainType("char"))
 
     def visit_BoolLit(self, node: BoolLit) -> PlainType:
