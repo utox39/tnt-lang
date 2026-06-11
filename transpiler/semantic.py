@@ -351,8 +351,50 @@ class SemanticAnalyzer:
         return target_type
 
     def visit_BinOp(self, node: BinOp) -> Type:
-        self.analyze(node.left)
-        self.analyze(node.right)
+        left_type = self.analyze(node.left)
+        right_type = self.analyze(node.right)
+
+        # Helper to check if a type is a specific primitive
+        def is_type(t: Type, name: str) -> bool:
+            return isinstance(t, PlainType) and t.name == name
+
+        # 1. Relational & Logical Operators (Always return an int/boolean)
+        if node.op in ["==", "!=", "<", ">", "<=", ">=", "&&", "||"]:
+            # Optional strictness: We could enforce left_type == right_type here,
+            # but C allows comparing int to float, so we allow it to pass.
+            return PlainType("int")
+
+        # 2. Arithmetic Operators (+, -, *, /, %)
+        if node.op in ["+", "-", "*", "/", "%"]:
+            # If they are exactly the same type, return that type
+            if left_type == right_type:
+                return left_type
+
+            # Standard C-style Promotion: int + float = float
+            if (is_type(left_type, "int") and is_type(right_type, "float")) or (
+                is_type(left_type, "float") and is_type(right_type, "int")
+            ):
+                # Modulo operation is illegal on floats in C
+                if node.op == "%":
+                    err = TntSemanticError(
+                        title="Illegal Modulo",
+                        details="The modulo operator '%' cannot be used with floating-point numbers.",
+                        hint="Both operands must be integers.",
+                    )
+                    err.print_and_exit()
+                return PlainType("float")
+
+            # If we get here with mismatched types that aren't int/float, it's a hard error
+            exp_str = type_to_str(left_type)
+            act_str = type_to_str(right_type)
+            err = TntSemanticError(
+                title="Invalid Binary Operation",
+                details=f"Cannot apply operator '{node.op}' between '{exp_str}' and '{act_str}'.",
+                hint="You may need to explicitly cast one of the variables using the 'as' keyword.",
+            )
+            err.print_and_exit()
+
+        # Fallback (Should never be reached if grammar is correct)
         return PlainType("int")
 
     def visit_UnaryOp(self, node: UnaryOp) -> Type:
