@@ -174,3 +174,4 @@ tempCodeRunnerFile.py
 
 # ignores C files (our output)
 *.c
+*.h

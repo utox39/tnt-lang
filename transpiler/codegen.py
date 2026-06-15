@@ -147,6 +147,7 @@ class CodeGenerator:
 
         self.defer_stack.append([])
 
+        has_return = False
         for stmt in node.stmts:
             stmt_code = self.generate(stmt)
             if stmt_code:
@@ -155,11 +156,14 @@ class CodeGenerator:
                 ):
                     stmt_code += ";"
                 out.append(f"{self.indent()}{stmt_code}\n")
+            if isinstance(stmt, ReturnStmt):
+                has_return = True
 
         current_defers = self.defer_stack.pop()
-        for defer_code in reversed(current_defers):
-            out.append(f"{self.indent()}// [defer executed at block end]\n")
-            out.append(f"{self.indent()}{defer_code}\n")
+        if not has_return:
+            for defer_code in reversed(current_defers):
+                out.append(f"{self.indent()}// [defer executed at block end]\n")
+                out.append(f"{self.indent()}{defer_code}\n")
 
         self.indent_level -= 1
         out.append(f"{self.indent()}}}")
@@ -222,6 +226,7 @@ class CodeGenerator:
             for defer_code in reversed(scope_defers):
                 out.append("// [defer executed via return]")
                 out.append(defer_code)
+            scope_defers.clear()
 
         val = f" {self.generate(node.value)}" if node.value else ""
         out.append(f"return{val};")
