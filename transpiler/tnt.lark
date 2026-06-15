@@ -188,6 +188,7 @@ expr_stmt : expr ";"
          | "false"      -> false_lit
          | IDENT        -> ident
          | "(" expr ")" -> paren_expr
+         | "[" (expr ("," expr)*)? "]" -> array_init
 
 arg_list : (expr ("," expr)*)?
 
