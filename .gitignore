@@ -171,3 +171,6 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+
+# ignores C files (our output)
+*.c
