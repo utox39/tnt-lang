@@ -2,6 +2,7 @@ import sys
 from typing import Any, NoReturn
 
 from ast_nodes import (
+    ArrayInit,
     ArrayType,
     Assign,
     BinOp,
@@ -270,9 +271,24 @@ class SemanticAnalyzer:
     def visit_VarDeclStmt(self, node: VarDeclStmt) -> None:
         if node.init:
             init_type = self.analyze(node.init)
-            self.expect_type(
-                node.type, init_type, f"the initialization of '{node.name}'", node
-            )
+            if isinstance(node.type, ArrayType) and isinstance(init_type, ArrayType):
+                if node.type.element != init_type.element:
+                    err = TntSemanticError(
+                        title="Type Mismatch",
+                        details=(
+                            f"Array element type mismatch in the initialization of '{node.name}': "
+                            f"expected '{type_to_str(node.type.element)}', "
+                            f"got '{type_to_str(init_type.element)}'."
+                        ),
+                        hint="Ensure the array literal elements match the declared element type.",
+                        line=getattr(node, "line", "?"),
+                        col=getattr(node, "column", "?"),
+                    )
+                    err.print_and_exit()
+            else:
+                self.expect_type(
+                    node.type, init_type, f"the initialization of '{node.name}'", node
+                )
         self.symtab.declare(node.name, node.type, node)
 
     def visit_ConstDeclStmt(self, node: ConstDeclStmt) -> None:
@@ -503,6 +519,34 @@ class SemanticAnalyzer:
             err.print_and_exit()
 
         return target_type
+
+    def visit_ArrayInit(self, node: ArrayInit) -> ArrayType:
+        if not node.elements:
+            err = TntSemanticError(
+                title="Empty Array Literal",
+                details="Array literals must contain at least one element.",
+                hint="Add at least one element to the array literal, e.g. [0].",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
+            )
+            err.print_and_exit()
+
+        first_type = self.analyze(node.elements[0])
+        if not isinstance(first_type, PlainType):
+            err = TntSemanticError(
+                title="Invalid Array Element Type",
+                details=f"Array elements must be plain types, but got '{type_to_str(first_type)}'.",
+                hint="Array literals only support plain types such as int, char, or float.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
+            )
+            err.print_and_exit()
+
+        for i, elem in enumerate(node.elements[1:], 1):
+            elem_type = self.analyze(elem)
+            self.expect_type(first_type, elem_type, f"array element {i}", elem)
+
+        return ArrayType(element=first_type, size=IntLit(value=len(node.elements)))
 
     def visit_Ident(self, node: Ident) -> Type:
         return self.symtab.lookup(node.name, node)

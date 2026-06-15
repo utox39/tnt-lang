@@ -1,6 +1,7 @@
 from typing import Any
 
 from ast_nodes import (
+    ArrayInit,
     ArrayType,
     Assign,
     BinOp,
@@ -165,12 +166,21 @@ class CodeGenerator:
         return "".join(out)
 
     def visit_VarDeclStmt(self, node: VarDeclStmt) -> str:
-        base = f"{self.fmt_type(node.type)} {node.name}"
+        if isinstance(node.type, ArrayType):
+            elem = self.fmt_type(node.type.element)
+            size_str = self.generate(node.type.size) if node.type.size else ""
+            base = f"{elem} {node.name}[{size_str}]"
+        else:
+            base = f"{self.fmt_type(node.type)} {node.name}"
         if node.init:
             return f"{base} = {self.generate(node.init)};"
         return f"{base};"
 
     def visit_ConstDeclStmt(self, node: ConstDeclStmt) -> str:
+        if isinstance(node.type, ArrayType):
+            elem = self.fmt_type(node.type.element)
+            size_str = self.generate(node.type.size) if node.type.size else ""
+            return f"const {elem} {node.name}[{size_str}] = {self.generate(node.init)};"
         return f"const {self.fmt_type(node.type)} {node.name} = {self.generate(node.init)};"
 
     def visit_IfStmt(self, node: IfStmt) -> str:
@@ -310,6 +320,10 @@ class CodeGenerator:
 
     def visit_Index(self, node: Index) -> str:
         return f"{self.generate(node.obj)}[{self.generate(node.idx)}]"
+
+    def visit_ArrayInit(self, node: ArrayInit) -> str:
+        elements = ", ".join(self.generate(e) for e in node.elements)
+        return f"{{{elements}}}"
 
     def visit_CastExpr(self, node: CastExpr) -> str:
         c_type = self.fmt_type(node.target_type)

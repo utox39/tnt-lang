@@ -141,6 +141,13 @@ class CastExpr:
     target_type: Type
 
 
+@dataclass
+class ArrayInit:
+    """[expr, expr, ...]"""
+
+    elements: list[Expr]
+
+
 Expr = Union[
     IntLit,
     FloatLit,
@@ -155,6 +162,7 @@ Expr = Union[
     FieldAccess,
     Index,
     CastExpr,
+    ArrayInit,
 ]
 
 

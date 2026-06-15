@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ast_nodes import (
+    ArrayInit,
     ArrayType,
     Assign,
     BinOp,
@@ -334,6 +335,9 @@ class AstTransformer(Transformer):
     # paren_expr carries no semantic information; just unwrap.
     def paren_expr(self, items):
         return items[0]
+
+    def array_init(self, items):
+        return ArrayInit(elements=list(items))
 
     def arg_list(self, items):
         return list(items)
