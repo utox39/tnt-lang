@@ -54,5 +54,13 @@ fn main() -> int {
   let p_test: Point;
   // let error: int = p_test as int;
 
+  let nums: int[3] = [1, 2, 3];
+  let chars: char[] = ['a', 'b', 'c'];
+  const primes: int[5] = [2, 3, 5, 7, 11];
+
+  printf("%d\n", nums[0]);
+  printf("%c\n", chars[1]);
+  printf("%d\n", primes[4]);
+
   return 0;
 }
