@@ -14,20 +14,24 @@ fn add_point(p1: ref Point, p2: ref Point) -> Point {
   // declare new point
   let p3: Point;
 
-  // assing its fields
+  // assign its fields
   p3.x = p1.x + p2.x;
   p3.y = p1.y + p2.y;
 
   // then return
   return p3;
+  defer printf("defer foonction\n");
 }
 
 fn main() -> int {
   let foo: int = 0;
   let foo_ptr: ref int = addr foo;
 
+  let arr: ref char= "string";
+
   printf("foo: %d\n", foo);
   defer printf("defer foo: %d\n", foo + 1);
+  defer printf("defer foo fighterz: %d\n", foo + 1);
 
   if (foo == 1) {
     tnt ->foo_ptr;
@@ -48,7 +52,7 @@ fn main() -> int {
   let three: int = pi as int;
 
   let p_test: Point;
-  let error: int = p_test as int;
+  // let error: int = p_test as int;
 
   return 0;
 }
