@@ -46,6 +46,24 @@ from lark import Transformer
 
 
 class AstTransformer(Transformer):
+    # ==========================================
+    # AST METADATA HOOK
+    # ==========================================
+    # ==========================================
+    # AST METADATA HOOK
+    # ==========================================
+    def _call_userfunc(self, tree, new_children=None):
+        # Intercept the node creation to automatically attach line and column data
+        node = super()._call_userfunc(tree, new_children)
+
+        # If the node is a standard object and Lark tracked its physical position
+        if hasattr(node, "__dict__") and hasattr(tree, "meta") and not tree.meta.empty:
+            # Use setattr to prevent Pyright 'unknown attribute' complaints
+            setattr(node, "line", tree.meta.line)
+            setattr(node, "column", tree.meta.column)
+
+        return node
+
     ### Program ###
 
     def start(self, items):
