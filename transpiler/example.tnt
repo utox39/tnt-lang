@@ -1,5 +1,5 @@
 import stdio.h
-import local ./path/lib.tnt
+import local ./example.h
 
 struct Point {
   x: int;
@@ -20,7 +20,6 @@ fn add_point(p1: ref Point, p2: ref Point) -> Point {
 
   // then return
   return p3;
-  defer printf("defer foonction\n");
 }
 
 fn main() -> int {
