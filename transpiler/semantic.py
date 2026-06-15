@@ -49,20 +49,27 @@ from ast_nodes import (
 
 
 class TntSemanticError(Exception):
-    def __init__(self, title: str, details: str, hint: str = "") -> None:
+    def __init__(
+        self, title: str, details: str, hint: str = "", line: Any = "?", col: Any = "?"
+    ) -> None:
         self.title = title
         self.details = details
         self.hint = hint
+        self.line = line
+        self.col = col
 
     def print_and_exit(self) -> NoReturn:
         red = "\033[1;31m"
         yellow = "\033[1;33m"
+        blue = "\033[1;36m"
         reset = "\033[0m"
 
-        print(f"\n{red}Error: {self.title}{reset}")
+        location = f"{blue}[Line {self.line}, Col {self.col}]{reset}"
+
+        print(f"\n🛑 {red}Error: {self.title}{reset} {location}")
         print(f"   {self.details}")
         if self.hint:
-            print(f"\n{yellow}Hint:{reset} {self.hint}")
+            print(f"\n💡 {yellow}Hint:{reset} {self.hint}")
         print()
         sys.exit(1)
 
@@ -70,11 +77,11 @@ class TntSemanticError(Exception):
 def type_to_str(t: Type | None) -> str:
     if t is None:
         return "void"
-    if isinstance(t, PlainType):
+    elif isinstance(t, PlainType):
         return t.name
-    if isinstance(t, RefType):
+    elif isinstance(t, RefType):
         return f"ref {type_to_str(t.inner)}"
-    if isinstance(t, ArrayType):
+    else:  # It must be ArrayType
         return f"{type_to_str(t.element)}[]"
 
 
@@ -85,9 +92,7 @@ def type_to_str(t: Type | None) -> str:
 
 class SymbolTable:
     def __init__(self) -> None:
-        # Variable scopes
         self.scopes: list[dict[str, Type]] = [{}]
-        # Struct registry: maps struct_name -> dict[field_name, field_type]
         self.structs: dict[str, dict[str, Type]] = {}
 
     def enter_scope(self) -> None:
@@ -99,18 +104,20 @@ class SymbolTable:
         else:
             raise RuntimeError("Compiler Bug: Attempted to pop the global scope.")
 
-    def declare(self, name: str, var_type: Type) -> None:
+    def declare(self, name: str, var_type: Type, node: Any = None) -> None:
         current_scope = self.scopes[-1]
         if name in current_scope:
             err = TntSemanticError(
                 title="Duplicate Declaration",
                 details=f"The identifier '{name}' is already defined in this scope.",
                 hint="Try renaming this variable.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
         current_scope[name] = var_type
 
-    def lookup(self, name: str) -> Type:
+    def lookup(self, name: str, node: Any = None) -> Type:
         for scope in reversed(self.scopes):
             if name in scope:
                 return scope[name]
@@ -118,25 +125,33 @@ class SymbolTable:
             title="Undefined Identifier",
             details=f"You tried to use '{name}', but it hasn't been declared.",
             hint=f"Did you forget to declare it with 'let {name}: type;'?",
+            line=getattr(node, "line", "?"),
+            col=getattr(node, "column", "?"),
         )
         err.print_and_exit()
 
-    def define_struct(self, name: str, fields: dict[str, Type]) -> None:
+    def define_struct(
+        self, name: str, fields: dict[str, Type], node: Any = None
+    ) -> None:
         if name in self.structs:
             err = TntSemanticError(
                 title="Duplicate Struct",
                 details=f"A struct named '{name}' is already defined.",
                 hint="Rename this struct.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
         self.structs[name] = fields
 
-    def get_struct(self, name: str) -> dict[str, Type]:
+    def get_struct(self, name: str, node: Any = None) -> dict[str, Type]:
         if name not in self.structs:
             err = TntSemanticError(
                 title="Undefined Struct",
                 details=f"You tried to use struct '{name}', but it hasn't been defined.",
                 hint="Ensure the struct is declared before you use it.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
         return self.structs[name]
@@ -151,9 +166,9 @@ class SemanticAnalyzer:
     def __init__(self) -> None:
         self.symtab = SymbolTable()
         self.current_function_return_type: Type | None = None
-        self.loop_depth: int = 0  # Used to validate break/continue
+        self.loop_depth: int = 0
 
-        # Pre-load system APIs
+        self.type_map: dict[int, Type] = {}
         self.symtab.declare("printf", PlainType("void"))
 
     def analyze(self, node: Any) -> Any:
@@ -162,14 +177,22 @@ class SemanticAnalyzer:
 
         method_name = f"visit_{type(node).__name__}"
         visitor = getattr(self, method_name, self.generic_visit)
-        return visitor(node)
+
+        resolved_type = visitor(node)
+
+        if resolved_type is not None:
+            self.type_map[id(node)] = resolved_type
+
+        return resolved_type
 
     def generic_visit(self, node: Any) -> Any:
         raise NotImplementedError(
             f"Compiler Bug: No visit method defined for {type(node).__name__}"
         )
 
-    def expect_type(self, expected: Type, actual: Type, context: str) -> None:
+    def expect_type(
+        self, expected: Type, actual: Type, context: str, node: Any
+    ) -> None:
         if expected != actual:
             exp_str = type_to_str(expected)
             act_str = type_to_str(actual)
@@ -177,6 +200,8 @@ class SemanticAnalyzer:
                 title="Type Mismatch",
                 details=f"In {context}, expected type '{exp_str}', but got '{act_str}'.",
                 hint="Check your variable declarations and arithmetic.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
@@ -191,23 +216,23 @@ class SemanticAnalyzer:
             self.analyze(decl)
 
     def visit_ImportSystem(self, node: ImportSystem) -> None:
-        pass  # Semantic analyzer ignores imports for now
+        _ = node
 
     def visit_ImportLocal(self, node: ImportLocal) -> None:
-        pass
+        _ = node
 
     # ==========================================
     # TOP LEVEL DECLARATIONS
     # ==========================================
 
     def visit_FuncDecl(self, node: FuncDecl) -> None:
-        self.symtab.declare(node.name, node.return_type)
+        self.symtab.declare(node.name, node.return_type, node)
 
         self.symtab.enter_scope()
         self.current_function_return_type = node.return_type
 
         for param in node.params:
-            self.symtab.declare(param.name, param.type)
+            self.symtab.declare(param.name, param.type, node)
 
         self.analyze(node.body)
 
@@ -216,7 +241,6 @@ class SemanticAnalyzer:
 
     def visit_StructDecl(self, node: StructDecl) -> None:
         fields: dict[str, Type] = {}
-
         node_fields = getattr(node, "fields", getattr(node, "decls", []))
 
         for field in node_fields:
@@ -225,11 +249,13 @@ class SemanticAnalyzer:
                     title="Duplicate Struct Field",
                     details=f"Field '{field.name}' is defined multiple times in '{node.name}'.",
                     hint="Ensure all fields within a struct have unique names.",
+                    line=getattr(node, "line", "?"),
+                    col=getattr(node, "column", "?"),
                 )
                 err.print_and_exit()
             fields[field.name] = field.type
 
-        self.symtab.define_struct(node.name, fields)
+        self.symtab.define_struct(node.name, fields, node)
 
     # ==========================================
     # STATEMENTS
@@ -245,16 +271,16 @@ class SemanticAnalyzer:
         if node.init:
             init_type = self.analyze(node.init)
             self.expect_type(
-                node.type, init_type, f"the initialization of '{node.name}'"
+                node.type, init_type, f"the initialization of '{node.name}'", node
             )
-        self.symtab.declare(node.name, node.type)
+        self.symtab.declare(node.name, node.type, node)
 
     def visit_ConstDeclStmt(self, node: ConstDeclStmt) -> None:
         init_type = self.analyze(node.init)
         self.expect_type(
-            node.type, init_type, f"the initialization of constant '{node.name}'"
+            node.type, init_type, f"the initialization of constant '{node.name}'", node
         )
-        self.symtab.declare(node.name, node.type)
+        self.symtab.declare(node.name, node.type, node)
 
     def visit_IfStmt(self, node: IfStmt) -> None:
         self.analyze(node.cond)
@@ -264,7 +290,6 @@ class SemanticAnalyzer:
 
     def visit_WhileStmt(self, node: WhileStmt) -> None:
         self.analyze(node.cond)
-
         self.loop_depth += 1
         self.analyze(node.body)
         self.loop_depth -= 1
@@ -273,9 +298,9 @@ class SemanticAnalyzer:
         if node.init:
             init_type = self.analyze(node.init)
             self.expect_type(
-                node.type, init_type, f"the for-loop init of '{node.name}'"
+                node.type, init_type, f"the for-loop init of '{node.name}'", node
             )
-        self.symtab.declare(node.name, node.type)
+        self.symtab.declare(node.name, node.type, node)
 
     def visit_ForStmt(self, node: ForStmt) -> None:
         self.symtab.enter_scope()
@@ -297,7 +322,10 @@ class SemanticAnalyzer:
             actual_type = self.analyze(node.value)
             if self.current_function_return_type:
                 self.expect_type(
-                    self.current_function_return_type, actual_type, "a return statement"
+                    self.current_function_return_type,
+                    actual_type,
+                    "a return statement",
+                    node,
                 )
 
     def visit_BreakStmt(self, node: BreakStmt) -> None:
@@ -306,6 +334,8 @@ class SemanticAnalyzer:
                 title="Invalid Control Flow",
                 details="A 'break' statement can only be used inside a loop.",
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
@@ -315,6 +345,8 @@ class SemanticAnalyzer:
                 title="Invalid Control Flow",
                 details="A 'continue' statement can only be used inside a loop.",
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
@@ -329,16 +361,16 @@ class SemanticAnalyzer:
         self.analyze(node.arg)
 
     def visit_TntDeref(self, node: TntDeref) -> None:
-        self.symtab.lookup(node.name)
+        self.symtab.lookup(node.name, node)
 
     def visit_TntString(self, node: TntString) -> None:
-        pass
+        _ = node
 
     def visit_TntInt(self, node: TntInt) -> None:
-        pass
+        _ = node
 
     def visit_TntVar(self, node: TntVar) -> None:
-        self.symtab.lookup(node.name)
+        self.symtab.lookup(node.name, node)
 
     # ==========================================
     # EXPRESSIONS
@@ -347,54 +379,48 @@ class SemanticAnalyzer:
     def visit_Assign(self, node: Assign) -> Type:
         target_type = self.analyze(node.target)
         value_type = self.analyze(node.value)
-        self.expect_type(target_type, value_type, "an assignment operation")
+        self.expect_type(target_type, value_type, "an assignment operation", node)
         return target_type
 
     def visit_BinOp(self, node: BinOp) -> Type:
         left_type = self.analyze(node.left)
         right_type = self.analyze(node.right)
 
-        # Helper to check if a type is a specific primitive
         def is_type(t: Type, name: str) -> bool:
             return isinstance(t, PlainType) and t.name == name
 
-        # 1. Relational & Logical Operators (Always return an int/boolean)
         if node.op in ["==", "!=", "<", ">", "<=", ">=", "&&", "||"]:
-            # Optional strictness: We could enforce left_type == right_type here,
-            # but C allows comparing int to float, so we allow it to pass.
             return PlainType("int")
 
-        # 2. Arithmetic Operators (+, -, *, /, %)
         if node.op in ["+", "-", "*", "/", "%"]:
-            # If they are exactly the same type, return that type
             if left_type == right_type:
                 return left_type
 
-            # Standard C-style Promotion: int + float = float
             if (is_type(left_type, "int") and is_type(right_type, "float")) or (
                 is_type(left_type, "float") and is_type(right_type, "int")
             ):
-                # Modulo operation is illegal on floats in C
                 if node.op == "%":
                     err = TntSemanticError(
                         title="Illegal Modulo",
                         details="The modulo operator '%' cannot be used with floating-point numbers.",
                         hint="Both operands must be integers.",
+                        line=getattr(node, "line", "?"),
+                        col=getattr(node, "column", "?"),
                     )
                     err.print_and_exit()
                 return PlainType("float")
 
-            # If we get here with mismatched types that aren't int/float, it's a hard error
             exp_str = type_to_str(left_type)
             act_str = type_to_str(right_type)
             err = TntSemanticError(
                 title="Invalid Binary Operation",
                 details=f"Cannot apply operator '{node.op}' between '{exp_str}' and '{act_str}'.",
                 hint="You may need to explicitly cast one of the variables using the 'as' keyword.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
-        # Fallback (Should never be reached if grammar is correct)
         return PlainType("int")
 
     def visit_UnaryOp(self, node: UnaryOp) -> Type:
@@ -424,11 +450,13 @@ class SemanticAnalyzer:
                 title="Invalid Field Access",
                 details=f"Cannot access fields on a non-struct type '{type_to_str(obj_type)}'.",
                 hint="Ensure the variable is a valid struct or a reference to a struct.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
         struct_name = base_type.name
-        struct_def = self.symtab.get_struct(struct_name)
+        struct_def = self.symtab.get_struct(struct_name, node)
 
         field_name = (
             node.field
@@ -441,6 +469,8 @@ class SemanticAnalyzer:
                 title="Unknown Field",
                 details=f"Struct '{struct_name}' has no field named '{field_name}'.",
                 hint=f"Check the definition of '{struct_name}' for valid fields.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
@@ -459,36 +489,41 @@ class SemanticAnalyzer:
         expr_type = self.analyze(node.expr)
         target_type = node.target_type
 
-        # Helper function to identify custom structs
         def is_struct(t: Type) -> bool:
             return isinstance(t, PlainType) and t.name in self.symtab.structs
 
-        # Explicitly prevent developers from casting custom structs into primitive types
         if is_struct(expr_type) or is_struct(target_type):
             err = TntSemanticError(
                 title="Invalid Cast",
                 details=f"Cannot cast from '{type_to_str(expr_type)}' to '{type_to_str(target_type)}'.",
                 hint="Structs cannot be directly cast. You must access their individual fields.",
+                line=getattr(node, "line", "?"),
+                col=getattr(node, "column", "?"),
             )
             err.print_and_exit()
 
         return target_type
 
     def visit_Ident(self, node: Ident) -> Type:
-        return self.symtab.lookup(node.name)
+        return self.symtab.lookup(node.name, node)
 
     # --- Literals ---
     def visit_IntLit(self, node: IntLit) -> PlainType:
+        _ = node
         return PlainType("int")
 
     def visit_FloatLit(self, node: FloatLit) -> PlainType:
+        _ = node
         return PlainType("float")
 
     def visit_CharLit(self, node: CharLit) -> PlainType:
+        _ = node
         return PlainType("char")
 
     def visit_StringLit(self, node: StringLit) -> RefType:
+        _ = node
         return RefType(PlainType("char"))
 
     def visit_BoolLit(self, node: BoolLit) -> PlainType:
+        _ = node
         return PlainType("int")
