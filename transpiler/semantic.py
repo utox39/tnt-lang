@@ -66,10 +66,10 @@ class TntSemanticError(Exception):
 
         location = f"{blue}[Line {self.line}, Col {self.col}]{reset}"
 
-        print(f"\n🛑 {red}Error: {self.title}{reset} {location}")
+        print(f"\n{red}Error: {self.title}{reset} {location}")
         print(f"   {self.details}")
         if self.hint:
-            print(f"\n💡 {yellow}Hint:{reset} {self.hint}")
+            print(f"\n{yellow}Hint:{reset} {self.hint}")
         print()
         sys.exit(1)
 
