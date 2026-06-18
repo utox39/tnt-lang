@@ -54,6 +54,7 @@ class TntSemanticError(Exception):
         line: Any = "?",
         col: Any = "?",
         source_line: str | None = None,
+        colored: bool = True,
     ) -> None:
         self.title = title
         self.details = details
@@ -61,23 +62,24 @@ class TntSemanticError(Exception):
         self.line = line
         self.col = col
         self.source_line = source_line
+        self.colored = colored
 
     def print_and_exit(self) -> NoReturn:
-        red = "\033[1;31m"
-        yellow = "\033[1;33m"
-        blue = "\033[1;36m"
-        reset = "\033[0m"
+        red = "\033[1;31m" if self.colored else ""
+        yellow = "\033[1;33m" if self.colored else ""
+        blue = "\033[1;36m" if self.colored else ""
+        reset = "\033[0m" if self.colored else ""
 
         location = f"{blue}[Line {self.line}, Col {self.col}]{reset}"
 
         print(f"\n{red}Error: {self.title}{reset} {location}")
-        print(f"   {self.details}")
+        print(f"    {self.details}")
 
         if self.source_line is not None:
             gutter = f"{self.line}"
             print(f"\n  {gutter} | {self.source_line}")
             col = self.col if isinstance(self.col, int) else 1
-            caret_pad = " " * (len(gutter) + 4 + col - 1)
+            caret_pad = " " * (len(gutter) + 4 + col)
             print(f"{caret_pad}^")
 
         if self.hint:
@@ -103,10 +105,11 @@ def type_to_str(t: Type | None) -> str:
 
 
 class SymbolTable:
-    def __init__(self, source_lines: list[str] | None = None) -> None:
+    def __init__(self, source_lines: list[str] | None = None, colored: bool = True) -> None:
         self.scopes: list[dict[str, Type]] = [{}]
         self.structs: dict[str, dict[str, Type]] = {}
         self.source_lines = source_lines
+        self.colored = colored
 
     def enter_scope(self) -> None:
         self.scopes.append({})
@@ -130,6 +133,7 @@ class SymbolTable:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
         current_scope[name] = var_type
@@ -148,6 +152,7 @@ class SymbolTable:
             source_line=self.source_lines[line - 1]
             if (self.source_lines and isinstance(line, int))
             else None,
+            colored=self.colored,
         )
         err.print_and_exit()
 
@@ -165,6 +170,7 @@ class SymbolTable:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
         self.structs[name] = fields
@@ -181,6 +187,7 @@ class SymbolTable:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
         return self.structs[name]
@@ -192,9 +199,10 @@ class SymbolTable:
 
 
 class SemanticAnalyzer:
-    def __init__(self, source_lines: list[str] | None = None) -> None:
+    def __init__(self, source_lines: list[str] | None = None, colored: bool = True) -> None:
         self.source_lines = source_lines
-        self.symtab = SymbolTable(source_lines=source_lines)
+        self.colored = colored
+        self.symtab = SymbolTable(source_lines=source_lines, colored=colored)
         self.current_function_return_type: Type | None = None
         self.loop_depth: int = 0
 
@@ -236,6 +244,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -289,6 +298,7 @@ class SemanticAnalyzer:
                     source_line=self.source_lines[line - 1]
                     if (self.source_lines and isinstance(line, int))
                     else None,
+                    colored=self.colored,
                 )
                 err.print_and_exit()
             fields[field.name] = field.type
@@ -324,6 +334,7 @@ class SemanticAnalyzer:
                         source_line=self.source_lines[line - 1]
                         if (self.source_lines and isinstance(line, int))
                         else None,
+                        colored=self.colored,
                     )
                     err.print_and_exit()
             else:
@@ -397,6 +408,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -412,6 +424,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -475,6 +488,7 @@ class SemanticAnalyzer:
                         source_line=self.source_lines[line - 1]
                         if (self.source_lines and isinstance(line, int))
                         else None,
+                        colored=self.colored,
                     )
                     err.print_and_exit()
                 return PlainType("float")
@@ -491,6 +505,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -529,6 +544,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -552,6 +568,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -584,6 +601,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -601,6 +619,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -616,6 +635,7 @@ class SemanticAnalyzer:
                 source_line=self.source_lines[line - 1]
                 if (self.source_lines and isinstance(line, int))
                 else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
