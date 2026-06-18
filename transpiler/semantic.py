@@ -441,7 +441,7 @@ class SemanticAnalyzer:
             return isinstance(t, PlainType) and t.name == name
 
         if node.op in ["==", "!=", "<", ">", "<=", ">=", "&&", "||"]:
-            return PlainType("int")
+            return PlainType("bool")
 
         if node.op in ["+", "-", "*", "/", "%"]:
             if left_type == right_type:
