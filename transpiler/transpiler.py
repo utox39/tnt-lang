@@ -2,7 +2,7 @@ from lark import Lark
 
 from ast_tree import AstTransformer
 from semantic import SemanticAnalyzer
-from codegen import CodeGenerator  # <-- 1. Import CodeGenerator
+from codegen import CodeGenerator
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
 
     ast = AstTransformer().transform(parse_tree)
 
-    analyzer = SemanticAnalyzer()
+    analyzer = SemanticAnalyzer(source_lines=source_code.splitlines())
     analyzer.analyze(ast)
     print("== INFO == Semantic analysis passed")
 

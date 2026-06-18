@@ -51,13 +51,20 @@ from ast_nodes import (
 
 class TntSemanticError(Exception):
     def __init__(
-        self, title: str, details: str, hint: str = "", line: Any = "?", col: Any = "?"
+        self,
+        title: str,
+        details: str,
+        hint: str = "",
+        line: Any = "?",
+        col: Any = "?",
+        source_line: str | None = None,
     ) -> None:
         self.title = title
         self.details = details
         self.hint = hint
         self.line = line
         self.col = col
+        self.source_line = source_line
 
     def print_and_exit(self) -> NoReturn:
         red = "\033[1;31m"
@@ -69,6 +76,14 @@ class TntSemanticError(Exception):
 
         print(f"\n{red}Error: {self.title}{reset} {location}")
         print(f"   {self.details}")
+
+        if self.source_line is not None:
+            gutter = f"{self.line}"
+            print(f"\n  {gutter} | {self.source_line}")
+            col = self.col if isinstance(self.col, int) else 1
+            caret_pad = " " * (len(gutter) + 4 + col - 1)
+            print(f"{caret_pad}^")
+
         if self.hint:
             print(f"\n{yellow}Hint:{reset} {self.hint}")
         print()
@@ -92,9 +107,10 @@ def type_to_str(t: Type | None) -> str:
 
 
 class SymbolTable:
-    def __init__(self) -> None:
+    def __init__(self, source_lines: list[str] | None = None) -> None:
         self.scopes: list[dict[str, Type]] = [{}]
         self.structs: dict[str, dict[str, Type]] = {}
+        self.source_lines = source_lines
 
     def enter_scope(self) -> None:
         self.scopes.append({})
@@ -108,12 +124,14 @@ class SymbolTable:
     def declare(self, name: str, var_type: Type, node: Any = None) -> None:
         current_scope = self.scopes[-1]
         if name in current_scope:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Duplicate Declaration",
                 details=f"The identifier '{name}' is already defined in this scope.",
                 hint="Try renaming this variable.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
         current_scope[name] = var_type
@@ -122,12 +140,14 @@ class SymbolTable:
         for scope in reversed(self.scopes):
             if name in scope:
                 return scope[name]
+        line = getattr(node, "line", "?")
         err = TntSemanticError(
             title="Undefined Identifier",
             details=f"You tried to use '{name}', but it hasn't been declared.",
             hint=f"Did you forget to declare it with 'let {name}: type;'?",
-            line=getattr(node, "line", "?"),
+            line=line,
             col=getattr(node, "column", "?"),
+            source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
         )
         err.print_and_exit()
 
@@ -135,24 +155,28 @@ class SymbolTable:
         self, name: str, fields: dict[str, Type], node: Any = None
     ) -> None:
         if name in self.structs:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Duplicate Struct",
                 details=f"A struct named '{name}' is already defined.",
                 hint="Rename this struct.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
         self.structs[name] = fields
 
     def get_struct(self, name: str, node: Any = None) -> dict[str, Type]:
         if name not in self.structs:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Undefined Struct",
                 details=f"You tried to use struct '{name}', but it hasn't been defined.",
                 hint="Ensure the struct is declared before you use it.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
         return self.structs[name]
@@ -164,8 +188,9 @@ class SymbolTable:
 
 
 class SemanticAnalyzer:
-    def __init__(self) -> None:
-        self.symtab = SymbolTable()
+    def __init__(self, source_lines: list[str] | None = None) -> None:
+        self.source_lines = source_lines
+        self.symtab = SymbolTable(source_lines=source_lines)
         self.current_function_return_type: Type | None = None
         self.loop_depth: int = 0
 
@@ -197,12 +222,14 @@ class SemanticAnalyzer:
         if expected != actual:
             exp_str = type_to_str(expected)
             act_str = type_to_str(actual)
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Type Mismatch",
                 details=f"In {context}, expected type '{exp_str}', but got '{act_str}'.",
                 hint="Check your variable declarations and arithmetic.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
@@ -246,12 +273,14 @@ class SemanticAnalyzer:
 
         for field in node_fields:
             if field.name in fields:
+                line = getattr(node, "line", "?")
                 err = TntSemanticError(
                     title="Duplicate Struct Field",
                     details=f"Field '{field.name}' is defined multiple times in '{node.name}'.",
                     hint="Ensure all fields within a struct have unique names.",
-                    line=getattr(node, "line", "?"),
+                    line=line,
                     col=getattr(node, "column", "?"),
+                    source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
                 )
                 err.print_and_exit()
             fields[field.name] = field.type
@@ -273,6 +302,7 @@ class SemanticAnalyzer:
             init_type = self.analyze(node.init)
             if isinstance(node.type, ArrayType) and isinstance(init_type, ArrayType):
                 if node.type.element != init_type.element:
+                    line = getattr(node, "line", "?")
                     err = TntSemanticError(
                         title="Type Mismatch",
                         details=(
@@ -281,8 +311,9 @@ class SemanticAnalyzer:
                             f"got '{type_to_str(init_type.element)}'."
                         ),
                         hint="Ensure the array literal elements match the declared element type.",
-                        line=getattr(node, "line", "?"),
+                        line=line,
                         col=getattr(node, "column", "?"),
+                        source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
                     )
                     err.print_and_exit()
             else:
@@ -346,23 +377,27 @@ class SemanticAnalyzer:
 
     def visit_BreakStmt(self, node: BreakStmt) -> None:
         if self.loop_depth <= 0:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Invalid Control Flow",
                 details="A 'break' statement can only be used inside a loop.",
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
     def visit_ContinueStmt(self, node: ContinueStmt) -> None:
         if self.loop_depth <= 0:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Invalid Control Flow",
                 details="A 'continue' statement can only be used inside a loop.",
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
@@ -416,24 +451,28 @@ class SemanticAnalyzer:
                 is_type(left_type, "float") and is_type(right_type, "int")
             ):
                 if node.op == "%":
+                    line = getattr(node, "line", "?")
                     err = TntSemanticError(
                         title="Illegal Modulo",
                         details="The modulo operator '%' cannot be used with floating-point numbers.",
                         hint="Both operands must be integers.",
-                        line=getattr(node, "line", "?"),
+                        line=line,
                         col=getattr(node, "column", "?"),
+                        source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
                     )
                     err.print_and_exit()
                 return PlainType("float")
 
+            line = getattr(node, "line", "?")
             exp_str = type_to_str(left_type)
             act_str = type_to_str(right_type)
             err = TntSemanticError(
                 title="Invalid Binary Operation",
                 details=f"Cannot apply operator '{node.op}' between '{exp_str}' and '{act_str}'.",
                 hint="You may need to explicitly cast one of the variables using the 'as' keyword.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
@@ -462,12 +501,14 @@ class SemanticAnalyzer:
             base_type = base_type.inner
 
         if not isinstance(base_type, PlainType):
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Invalid Field Access",
                 details=f"Cannot access fields on a non-struct type '{type_to_str(obj_type)}'.",
                 hint="Ensure the variable is a valid struct or a reference to a struct.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
@@ -481,12 +522,14 @@ class SemanticAnalyzer:
         )
 
         if field_name not in struct_def:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Unknown Field",
                 details=f"Struct '{struct_name}' has no field named '{field_name}'.",
                 hint=f"Check the definition of '{struct_name}' for valid fields.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
@@ -509,12 +552,14 @@ class SemanticAnalyzer:
             return isinstance(t, PlainType) and t.name in self.symtab.structs
 
         if is_struct(expr_type) or is_struct(target_type):
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Invalid Cast",
                 details=f"Cannot cast from '{type_to_str(expr_type)}' to '{type_to_str(target_type)}'.",
                 hint="Structs cannot be directly cast. You must access their individual fields.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
@@ -522,23 +567,27 @@ class SemanticAnalyzer:
 
     def visit_ArrayInit(self, node: ArrayInit) -> ArrayType:
         if not node.elements:
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Empty Array Literal",
                 details="Array literals must contain at least one element.",
                 hint="Add at least one element to the array literal, e.g. [0].",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
         first_type = self.analyze(node.elements[0])
         if not isinstance(first_type, PlainType):
+            line = getattr(node, "line", "?")
             err = TntSemanticError(
                 title="Invalid Array Element Type",
                 details=f"Array elements must be plain types, but got '{type_to_str(first_type)}'.",
                 hint="Array literals only support plain types such as int, char, or float.",
-                line=getattr(node, "line", "?"),
+                line=line,
                 col=getattr(node, "column", "?"),
+                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
             )
             err.print_and_exit()
 
