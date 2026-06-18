@@ -19,7 +19,7 @@ def main():
 
     ast = AstTransformer().transform(parse_tree)
 
-    analyzer = SemanticAnalyzer()
+    analyzer = SemanticAnalyzer(source_lines=source_code.splitlines())
     analyzer.analyze(ast)
     print("== INFO == Semantic analysis passed")
 
