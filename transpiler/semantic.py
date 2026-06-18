@@ -619,4 +619,4 @@ class SemanticAnalyzer:
 
     def visit_BoolLit(self, node: BoolLit) -> PlainType:
         _ = node
-        return PlainType("int")
+        return PlainType("bool")
