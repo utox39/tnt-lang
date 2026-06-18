@@ -2,7 +2,7 @@ from lark import Lark
 
 from ast_tree import AstTransformer
 from semantic import SemanticAnalyzer
-from codegen import CodeGenerator  # <-- 1. Import CodeGenerator
+from codegen import CodeGenerator
 
 
 def main():
