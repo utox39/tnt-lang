@@ -44,10 +44,6 @@ from ast_nodes import (
     WhileStmt,
 )
 
-# ==========================================
-# ERROR REPORTING ENGINE
-# ==========================================
-
 
 class TntSemanticError(Exception):
     def __init__(
@@ -131,7 +127,9 @@ class SymbolTable:
                 hint="Try renaming this variable.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
         current_scope[name] = var_type
@@ -147,7 +145,9 @@ class SymbolTable:
             hint=f"Did you forget to declare it with 'let {name}: type;'?",
             line=line,
             col=getattr(node, "column", "?"),
-            source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+            source_line=self.source_lines[line - 1]
+            if (self.source_lines and isinstance(line, int))
+            else None,
         )
         err.print_and_exit()
 
@@ -162,7 +162,9 @@ class SymbolTable:
                 hint="Rename this struct.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
         self.structs[name] = fields
@@ -176,7 +178,9 @@ class SymbolTable:
                 hint="Ensure the struct is declared before you use it.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
         return self.structs[name]
@@ -229,7 +233,9 @@ class SemanticAnalyzer:
                 hint="Check your variable declarations and arithmetic.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -280,7 +286,9 @@ class SemanticAnalyzer:
                     hint="Ensure all fields within a struct have unique names.",
                     line=line,
                     col=getattr(node, "column", "?"),
-                    source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                    source_line=self.source_lines[line - 1]
+                    if (self.source_lines and isinstance(line, int))
+                    else None,
                 )
                 err.print_and_exit()
             fields[field.name] = field.type
@@ -313,7 +321,9 @@ class SemanticAnalyzer:
                         hint="Ensure the array literal elements match the declared element type.",
                         line=line,
                         col=getattr(node, "column", "?"),
-                        source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                        source_line=self.source_lines[line - 1]
+                        if (self.source_lines and isinstance(line, int))
+                        else None,
                     )
                     err.print_and_exit()
             else:
@@ -384,7 +394,9 @@ class SemanticAnalyzer:
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -397,7 +409,9 @@ class SemanticAnalyzer:
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -458,7 +472,9 @@ class SemanticAnalyzer:
                         hint="Both operands must be integers.",
                         line=line,
                         col=getattr(node, "column", "?"),
-                        source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                        source_line=self.source_lines[line - 1]
+                        if (self.source_lines and isinstance(line, int))
+                        else None,
                     )
                     err.print_and_exit()
                 return PlainType("float")
@@ -472,7 +488,9 @@ class SemanticAnalyzer:
                 hint="You may need to explicitly cast one of the variables using the 'as' keyword.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -508,7 +526,9 @@ class SemanticAnalyzer:
                 hint="Ensure the variable is a valid struct or a reference to a struct.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -529,7 +549,9 @@ class SemanticAnalyzer:
                 hint=f"Check the definition of '{struct_name}' for valid fields.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -559,7 +581,9 @@ class SemanticAnalyzer:
                 hint="Structs cannot be directly cast. You must access their individual fields.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -574,7 +598,9 @@ class SemanticAnalyzer:
                 hint="Add at least one element to the array literal, e.g. [0].",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
@@ -587,7 +613,9 @@ class SemanticAnalyzer:
                 hint="Array literals only support plain types such as int, char, or float.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
             )
             err.print_and_exit()
 
