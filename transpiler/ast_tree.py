@@ -50,9 +50,6 @@ class AstTransformer(Transformer):
     # ==========================================
     # AST METADATA HOOK
     # ==========================================
-    # ==========================================
-    # AST METADATA HOOK
-    # ==========================================
     def _call_userfunc(self, tree, new_children=None):
         # Intercept the node creation to automatically attach line and column data
         node = super()._call_userfunc(tree, new_children)
