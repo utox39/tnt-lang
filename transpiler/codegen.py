@@ -91,7 +91,8 @@ class CodeGenerator:
         out.append("// ==========================================")
         out.append("#include <stdint.h>")
         out.append("#include <stdbool.h>")
-        out.append("#include <stdlib.h>\n")  # Added for exit()
+        out.append("#include <stdlib.h>")
+        out.append("#include <string.h>\n")
 
         for imp in node.imports:
             out.append(self.generate(imp))
@@ -298,6 +299,10 @@ class CodeGenerator:
     # ==========================================
 
     def visit_Assign(self, node: Assign) -> str:
+        target_type = self.type_map.get(id(node.target))
+        if isinstance(target_type, ArrayType):
+            target_code = self.generate(node.target)
+            return f"memcpy({target_code}, {self.generate(node.value)}, sizeof({target_code}))"
         return f"{self.generate(node.target)} = {self.generate(node.value)}"
 
     def visit_BinOp(self, node: BinOp) -> str:
