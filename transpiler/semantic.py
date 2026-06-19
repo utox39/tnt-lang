@@ -315,6 +315,17 @@ class SemanticAnalyzer:
             self.analyze(stmt)
         self.symtab.exit_scope()
 
+    @staticmethod
+    def _is_string_to_char_array(target: Type, value: Type) -> bool:
+        return (
+            isinstance(target, ArrayType)
+            and isinstance(target.element, PlainType)
+            and target.element.name == "char"
+            and isinstance(value, RefType)
+            and isinstance(value.inner, PlainType)
+            and value.inner.name == "char"
+        )
+
     def visit_VarDeclStmt(self, node: VarDeclStmt) -> None:
         if node.init:
             init_type = self.analyze(node.init)
@@ -337,6 +348,8 @@ class SemanticAnalyzer:
                         colored=self.colored,
                     )
                     err.print_and_exit()
+            elif self._is_string_to_char_array(node.type, init_type):
+                pass  # char[N] = "string literal" is valid
             else:
                 self.expect_type(
                     node.type, init_type, f"the initialization of '{node.name}'", node
@@ -457,7 +470,8 @@ class SemanticAnalyzer:
     def visit_Assign(self, node: Assign) -> Type:
         target_type = self.analyze(node.target)
         value_type = self.analyze(node.value)
-        self.expect_type(target_type, value_type, "an assignment operation", node)
+        if not self._is_string_to_char_array(target_type, value_type):
+            self.expect_type(target_type, value_type, "an assignment operation", node)
         return target_type
 
     def visit_BinOp(self, node: BinOp) -> Type:
