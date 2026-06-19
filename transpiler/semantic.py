@@ -580,7 +580,10 @@ class SemanticAnalyzer:
         if isinstance(obj_type, ArrayType):
             return obj_type.element
         if isinstance(obj_type, RefType):
-            return obj_type.inner
+            inner = obj_type.inner
+            if isinstance(inner, ArrayType):
+                return inner.element
+            return inner
         return PlainType("unknown")
 
     def visit_CastExpr(self, node: CastExpr) -> Type:
