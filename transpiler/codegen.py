@@ -115,10 +115,18 @@ class CodeGenerator:
     # TOP LEVEL DECLARATIONS
     # ==========================================
 
+    def _fmt_param(self, p: Any) -> str:
+        t = p.type
+        if isinstance(t, RefType) and isinstance(t.inner, ArrayType):
+            elem = self.fmt_type(t.inner.element)
+            size_str = self.generate(t.inner.size) if t.inner.size else ""
+            return f"{elem} (*{p.name})[{size_str}]"
+        return f"{self.fmt_type(t)} {p.name}"
+
     def visit_FuncDecl(self, node: FuncDecl) -> str:
         out: list[str] = []
         ret_type = self.fmt_type(node.return_type)
-        params = ", ".join(f"{self.fmt_type(p.type)} {p.name}" for p in node.params)
+        params = ", ".join(self._fmt_param(p) for p in node.params)
 
         out.append(f"{ret_type} {node.name}({params}) ")
         out.append(self.generate(node.body))
@@ -300,6 +308,12 @@ class CodeGenerator:
         if op_str == "addr":
             op_str = "&"
         elif op_str == "->":
+            # ->arr[i] where arr is ref to array: reorder to (*arr)[i]
+            if isinstance(node.operand, Index):
+                obj = node.operand.obj
+                obj_type = self.type_map.get(id(obj))
+                if isinstance(obj_type, RefType) and isinstance(obj_type.inner, ArrayType):
+                    return f"(*{self.generate(obj)})[{self.generate(node.operand.idx)}]"
             op_str = "*"
 
         return f"({op_str}{self.generate(node.operand)})"
