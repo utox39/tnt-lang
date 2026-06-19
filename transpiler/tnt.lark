@@ -190,7 +190,15 @@ expr_stmt : expr ";"
          | "(" expr ")" -> paren_expr
          | "[" (expr ("," expr)*)? "]" -> array_init
 
-arg_list : (expr ("," expr)*)?
+arg_list : (arg ("," arg)*)?
+arg      : expr          -> arg_expr
+         | keyword_type  -> arg_type
+
+// Keyword-only types usable as C call arguments (avoids IDENT ambiguity)
+keyword_type : "int"   -> base_int
+             | "char"  -> base_char
+             | "void"  -> base_void
+             | "float" -> base_float
 
 // ============================================================
 // 8. LEXICAL TERMINALS

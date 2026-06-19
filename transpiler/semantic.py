@@ -39,6 +39,8 @@ from ast_nodes import (
     TntString,
     TntVar,
     Type,
+    TypeArg,
+    CType,
     UnaryOp,
     VarDeclStmt,
     WhileStmt,
@@ -231,6 +233,8 @@ class SemanticAnalyzer:
     def expect_type(
         self, expected: Type, actual: Type, context: str, node: Any
     ) -> None:
+        if isinstance(actual, CType):
+            return
         if expected != actual:
             exp_str = type_to_str(expected)
             act_str = type_to_str(actual)
@@ -485,6 +489,10 @@ class SemanticAnalyzer:
             return PlainType("bool")
 
         if node.op in ["+", "-", "*", "/", "%"]:
+            if isinstance(left_type, CType):
+                return right_type
+            if isinstance(right_type, CType):
+                return left_type
             if left_type == right_type:
                 return left_type
 
@@ -534,11 +542,35 @@ class SemanticAnalyzer:
                 return operand_type.inner
         return operand_type
 
+    def _is_c_call(self, node: Call) -> bool:
+        return (
+            isinstance(node.callee, FieldAccess)
+            and isinstance(node.callee.obj, Ident)
+            and node.callee.obj.name == "c"
+        )
+
     def visit_Call(self, node: Call) -> Type:
+        if self._is_c_call(node):
+            return CType()
         return_type = self.analyze(node.callee)
         for arg in node.args:
             self.analyze(arg)
         return return_type
+
+    def visit_TypeArg(self, node: TypeArg) -> Type:
+        line = getattr(node, "line", "?")
+        err = TntSemanticError(
+            title="Type Used as Expression",
+            details="A type name cannot be used as an expression here.",
+            hint="Type name arguments are only valid in C extern calls (c.funcname(...)).",
+            line=line,
+            col=getattr(node, "column", "?"),
+            source_line=self.source_lines[line - 1]
+            if (self.source_lines and isinstance(line, int))
+            else None,
+            colored=self.colored,
+        )
+        err.print_and_exit()
 
     def visit_FieldAccess(self, node: FieldAccess) -> Type:
         obj_type = self.analyze(node.obj)

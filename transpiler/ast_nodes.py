@@ -28,7 +28,14 @@ class ArrayType:
     size: Optional[Expr]
 
 
-Type = Union[RefType, PlainType, ArrayType]
+@dataclass
+class CType:
+    """Opaque return type for c.* external calls — bypasses type checking."""
+
+    pass
+
+
+Type = Union[RefType, PlainType, ArrayType, CType]
 
 
 # === EXPRESSIONS ===
@@ -148,6 +155,13 @@ class ArrayInit:
     elements: list[Expr]
 
 
+@dataclass
+class TypeArg:
+    """A type name used as a call argument (e.g., c.sizeof(float))."""
+
+    type: Type
+
+
 Expr = Union[
     IntLit,
     FloatLit,
@@ -163,6 +177,7 @@ Expr = Union[
     Index,
     CastExpr,
     ArrayInit,
+    TypeArg,
 ]
 
 

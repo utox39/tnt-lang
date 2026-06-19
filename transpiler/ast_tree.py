@@ -39,6 +39,7 @@ from ast_nodes import (
     TntStmt,
     TntString,
     TntVar,
+    TypeArg,
     UnaryOp,
     VarDeclStmt,
     WhileStmt,
@@ -338,6 +339,12 @@ class AstTransformer(Transformer):
 
     def arg_list(self, items):
         return list(items)
+
+    def arg_expr(self, items):
+        return items[0]
+
+    def arg_type(self, items):
+        return TypeArg(type=items[0])
 
 
 # "or", "and", "not" are Python reserved keywords and cannot appear as method

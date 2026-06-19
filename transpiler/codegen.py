@@ -38,6 +38,7 @@ from ast_nodes import (
     TntString,
     TntVar,
     Type,
+    TypeArg,
     UnaryOp,
     VarDeclStmt,
     WhileStmt,
@@ -330,7 +331,21 @@ class CodeGenerator:
 
     def visit_Call(self, node: Call) -> str:
         args = ", ".join(self.generate(arg) for arg in node.args)
+        if (
+            isinstance(node.callee, FieldAccess)
+            and isinstance(node.callee.obj, Ident)
+            and node.callee.obj.name == "c"
+        ):
+            field_name = (
+                node.callee.field
+                if isinstance(node.callee.field, str)
+                else getattr(node.callee.field, "name", str(node.callee.field))
+            )
+            return f"{field_name}({args})"
         return f"{self.generate(node.callee)}({args})"
+
+    def visit_TypeArg(self, node: TypeArg) -> str:
+        return self.fmt_type(node.type)
 
     def visit_FieldAccess(self, node: FieldAccess) -> str:
         obj_code = self.generate(node.obj)
