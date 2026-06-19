@@ -140,7 +140,12 @@ class CodeGenerator:
 
         node_fields = getattr(node, "fields", getattr(node, "decls", []))
         for field in node_fields:
-            out.append(f"{self.indent()}{self.fmt_type(field.type)} {field.name};\n")
+            if isinstance(field.type, ArrayType):
+                elem = self.fmt_type(field.type.element)
+                size_str = self.generate(field.type.size) if field.type.size else ""
+                out.append(f"{self.indent()}{elem} {field.name}[{size_str}];\n")
+            else:
+                out.append(f"{self.indent()}{self.fmt_type(field.type)} {field.name};\n")
 
         self.indent_level -= 1
         out.append(f"}} {node.name};")
@@ -343,6 +348,9 @@ class CodeGenerator:
         return f"{obj_code}.{field_name}"
 
     def visit_Index(self, node: Index) -> str:
+        obj_type = self.type_map.get(id(node.obj))
+        if isinstance(obj_type, RefType) and isinstance(obj_type.inner, ArrayType):
+            return f"(*{self.generate(node.obj)})[{self.generate(node.idx)}]"
         return f"{self.generate(node.obj)}[{self.generate(node.idx)}]"
 
     def visit_ArrayInit(self, node: ArrayInit) -> str:
