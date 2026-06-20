@@ -1,15 +1,18 @@
 import stdio.h
 import local ./example.h
 
+// This is how to declare custom type
 struct Point {
   x: int;
   y: int;
 };
 
+// Function declaration
 fn add(a: int, b: int) -> int {
   return a + b;
 }
 
+// A function that requires two pointers to `Point`
 fn add_point(p1: ref Point, p2: ref Point) -> Point {
   // declare new point
   let p3: Point;
@@ -22,15 +25,36 @@ fn add_point(p1: ref Point, p2: ref Point) -> Point {
   return p3;
 }
 
+// A function that does not return any value
+fn foo() -> void {
+  printf("Hello\n");
+}
+
+fn process_array(arr: ref int[5]) -> void {
+    let i: int = 0;
+    while (i < 5) {
+        ->arr[i] = ->arr[i] * 2;
+        i = i + 1;
+    }
+}
+
+// The main function. It must be always declared
 fn main() -> int {
   let foo: int = 0;
-  let foo_ptr: ref int = addr foo;
+  // Pointer to int
+  let foo_ptr: ref int = addr foo; // with `addr` we obtain the address of `foo`
 
-  let arr: ref char= "string";
+  // Pointer to `char`
+  let arr: ref char = "string";
 
   printf("foo: %d\n", foo);
+
+  // The defer keyword
   defer printf("defer foo: %d\n", foo + 1);
   defer printf("defer foo fighterz: %d\n", foo + 1);
+
+  // Pointer dereferencing
+  let foo_foo: int = ->foo_ptr;
 
   if (foo == 1) {
     tnt ->foo_ptr;
@@ -50,16 +74,33 @@ fn main() -> int {
   let pi: float = 3.99;
   let three: int = pi as int;
 
+  // Struct initialization
   let p_test: Point;
-  // let error: int = p_test as int;
+  p_test.x = 2;
+  p_test.y = 3;
 
+  // Here's how to pass the address of a variable or a constant
+  add_point(addr p_test, addr p_test);
+
+  // Array initialization
   let nums: int[3] = [1, 2, 3];
   let chars: char[] = ['a', 'b', 'c'];
-  const primes: int[5] = [2, 3, 5, 7, 11];
+  let primes: int[5] = [2, 3, 5, 7, 11];
 
   printf("%d\n", nums[0]);
   printf("%c\n", chars[1]);
   printf("%d\n", primes[4]);
+
+  process_array(addr primes);
+
+  // C extern calls
+  let size: int = 10;
+  let ptr: ref int = c.malloc(size * c.sizeof(int)) as ref int;
+  defer c.free(ptr);
+  // Check if `ptr` is null
+  if (ptr == null) {
+    tnt "ptr is null";
+  }
 
   return 0;
 }
