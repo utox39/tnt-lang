@@ -7,6 +7,7 @@ from ast_nodes import (
     BinOp,
     Block,
     BoolLit,
+    NullLit,
     BreakStmt,
     Call,
     CastExpr,
@@ -394,3 +395,7 @@ class CodeGenerator:
 
     def visit_BoolLit(self, node: BoolLit) -> str:
         return "true" if node.value else "false"
+
+    def visit_NullLit(self, node: NullLit) -> str:
+        _ = node
+        return "NULL"

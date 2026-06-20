@@ -8,6 +8,8 @@ from ast_nodes import (
     BinOp,
     Block,
     BoolLit,
+    NullLit,
+    NullType,
     BreakStmt,
     Call,
     CastExpr,
@@ -97,6 +99,8 @@ def type_to_str(t: Type | None) -> str:
         return t.name
     elif isinstance(t, RefType):
         return f"ref {type_to_str(t.inner)}"
+    elif isinstance(t, NullType):
+        return "null"
     else:  # It must be ArrayType
         return f"{type_to_str(t.element)}[]"
 
@@ -235,6 +239,9 @@ class SemanticAnalyzer:
     ) -> None:
         if isinstance(actual, CType):
             return
+        if isinstance(actual, NullType):
+            if isinstance(expected, RefType):
+                return
         if expected != actual:
             exp_str = type_to_str(expected)
             act_str = type_to_str(actual)
@@ -717,3 +724,7 @@ class SemanticAnalyzer:
     def visit_BoolLit(self, node: BoolLit) -> PlainType:
         _ = node
         return PlainType("bool")
+
+    def visit_NullLit(self, node: NullLit) -> NullType:
+        _ = node
+        return NullType()

@@ -35,7 +35,14 @@ class CType:
     pass
 
 
-Type = Union[RefType, PlainType, ArrayType, CType]
+@dataclass
+class NullType:
+    """Type of the null literal — assignable to any ref type."""
+
+    pass
+
+
+Type = Union[RefType, PlainType, ArrayType, CType, NullType]
 
 
 # === EXPRESSIONS ===
@@ -68,6 +75,13 @@ class StringLit:
 @dataclass
 class BoolLit:
     value: bool
+
+
+@dataclass
+class NullLit:
+    """null pointer literal."""
+
+    pass
 
 
 @dataclass
@@ -168,6 +182,7 @@ Expr = Union[
     CharLit,
     StringLit,
     BoolLit,
+    NullLit,
     Ident,
     Assign,
     BinOp,

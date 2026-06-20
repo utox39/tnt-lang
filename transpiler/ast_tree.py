@@ -7,6 +7,7 @@ from ast_nodes import (
     BinOp,
     Block,
     BoolLit,
+    NullLit,
     BreakStmt,
     Call,
     CastExpr,
@@ -326,6 +327,9 @@ class AstTransformer(Transformer):
 
     def false_lit(self, _):
         return BoolLit(value=False)
+
+    def null_lit(self, _):
+        return NullLit()
 
     def ident(self, items):
         return Ident(name=str(items[0]))

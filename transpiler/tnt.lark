@@ -186,6 +186,7 @@ expr_stmt : expr ";"
          | STRING_LIT   -> string_lit
          | "true"       -> true_lit
          | "false"      -> false_lit
+         | "null"       -> null_lit
          | IDENT        -> ident
          | "(" expr ")" -> paren_expr
          | "[" (expr ("," expr)*)? "]" -> array_init
