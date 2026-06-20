@@ -53,6 +53,7 @@ class CodeGenerator:
 
         # Pull in the resolved AST types from the Semantic Analyzer
         self.type_map = type_map
+        self.struct_names: set[str] = set()
 
     def generate(self, node: Any) -> str:
         if node is None:
@@ -74,6 +75,8 @@ class CodeGenerator:
         if t is None:
             return "void"
         elif isinstance(t, PlainType):
+            if t.name in self.struct_names:
+                return f"struct {t.name}"
             return t.name
         elif isinstance(t, RefType):
             return f"{self.fmt_type(t.inner)}*"
@@ -95,6 +98,10 @@ class CodeGenerator:
         out.append("#include <stdbool.h>")
         out.append("#include <stdlib.h>")
         out.append("#include <string.h>\n")
+
+        for decl in node.decls:
+            if isinstance(decl, StructDecl):
+                self.struct_names.add(decl.name)
 
         for imp in node.imports:
             out.append(self.generate(imp))
