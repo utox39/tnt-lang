@@ -1,3 +1,5 @@
+import argparse
+
 from lark import Lark
 
 from ast_tree import AstTransformer
@@ -6,8 +8,16 @@ from codegen import CodeGenerator
 
 
 def main():
+    parser = argparse.ArgumentParser(description="TNT language transpiler.")
+    parser.add_argument("filepath", type=str, help="The .tnt file path")
+    parser.add_argument(
+        "--no-color", action="store_true", help="Disable colored error output"
+    )
+    args = parser.parse_args()
+    filepath = args.filepath
+
     source_code = ""
-    with open("example.tnt") as f:
+    with open(filepath) as f:
         source_code = f.read()
 
     grammar = ""
@@ -19,7 +29,9 @@ def main():
 
     ast = AstTransformer().transform(parse_tree)
 
-    analyzer = SemanticAnalyzer(source_lines=source_code.splitlines())
+    analyzer = SemanticAnalyzer(
+        source_lines=source_code.splitlines(), colored=not args.no_color
+    )
     analyzer.analyze(ast)
     print("== INFO == Semantic analysis passed")
 

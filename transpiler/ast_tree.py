@@ -7,6 +7,7 @@ from ast_nodes import (
     BinOp,
     Block,
     BoolLit,
+    NullLit,
     BreakStmt,
     Call,
     CastExpr,
@@ -39,6 +40,7 @@ from ast_nodes import (
     TntStmt,
     TntString,
     TntVar,
+    TypeArg,
     UnaryOp,
     VarDeclStmt,
     WhileStmt,
@@ -47,9 +49,6 @@ from lark import Transformer
 
 
 class AstTransformer(Transformer):
-    # ==========================================
-    # AST METADATA HOOK
-    # ==========================================
     # ==========================================
     # AST METADATA HOOK
     # ==========================================
@@ -329,6 +328,9 @@ class AstTransformer(Transformer):
     def false_lit(self, _):
         return BoolLit(value=False)
 
+    def null_lit(self, _):
+        return NullLit()
+
     def ident(self, items):
         return Ident(name=str(items[0]))
 
@@ -341,6 +343,12 @@ class AstTransformer(Transformer):
 
     def arg_list(self, items):
         return list(items)
+
+    def arg_expr(self, items):
+        return items[0]
+
+    def arg_type(self, items):
+        return TypeArg(type=items[0])
 
 
 # "or", "and", "not" are Python reserved keywords and cannot appear as method

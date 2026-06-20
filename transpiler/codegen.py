@@ -7,6 +7,7 @@ from ast_nodes import (
     BinOp,
     Block,
     BoolLit,
+    NullLit,
     BreakStmt,
     Call,
     CastExpr,
@@ -38,6 +39,7 @@ from ast_nodes import (
     TntString,
     TntVar,
     Type,
+    TypeArg,
     UnaryOp,
     VarDeclStmt,
     WhileStmt,
@@ -91,7 +93,8 @@ class CodeGenerator:
         out.append("// ==========================================")
         out.append("#include <stdint.h>")
         out.append("#include <stdbool.h>")
-        out.append("#include <stdlib.h>\n")  # Added for exit()
+        out.append("#include <stdlib.h>")
+        out.append("#include <string.h>\n")
 
         for imp in node.imports:
             out.append(self.generate(imp))
@@ -115,10 +118,18 @@ class CodeGenerator:
     # TOP LEVEL DECLARATIONS
     # ==========================================
 
+    def _fmt_param(self, p: Any) -> str:
+        t = p.type
+        if isinstance(t, RefType) and isinstance(t.inner, ArrayType):
+            elem = self.fmt_type(t.inner.element)
+            size_str = self.generate(t.inner.size) if t.inner.size else ""
+            return f"{elem} (*{p.name})[{size_str}]"
+        return f"{self.fmt_type(t)} {p.name}"
+
     def visit_FuncDecl(self, node: FuncDecl) -> str:
         out: list[str] = []
         ret_type = self.fmt_type(node.return_type)
-        params = ", ".join(f"{self.fmt_type(p.type)} {p.name}" for p in node.params)
+        params = ", ".join(self._fmt_param(p) for p in node.params)
 
         out.append(f"{ret_type} {node.name}({params}) ")
         out.append(self.generate(node.body))
@@ -131,7 +142,12 @@ class CodeGenerator:
 
         node_fields = getattr(node, "fields", getattr(node, "decls", []))
         for field in node_fields:
-            out.append(f"{self.indent()}{self.fmt_type(field.type)} {field.name};\n")
+            if isinstance(field.type, ArrayType):
+                elem = self.fmt_type(field.type.element)
+                size_str = self.generate(field.type.size) if field.type.size else ""
+                out.append(f"{self.indent()}{elem} {field.name}[{size_str}];\n")
+            else:
+                out.append(f"{self.indent()}{self.fmt_type(field.type)} {field.name};\n")
 
         self.indent_level -= 1
         out.append(f"}} {node.name};")
@@ -290,6 +306,10 @@ class CodeGenerator:
     # ==========================================
 
     def visit_Assign(self, node: Assign) -> str:
+        target_type = self.type_map.get(id(node.target))
+        if isinstance(target_type, ArrayType):
+            target_code = self.generate(node.target)
+            return f"memcpy({target_code}, {self.generate(node.value)}, sizeof({target_code}))"
         return f"{self.generate(node.target)} = {self.generate(node.value)}"
 
     def visit_BinOp(self, node: BinOp) -> str:
@@ -300,13 +320,33 @@ class CodeGenerator:
         if op_str == "addr":
             op_str = "&"
         elif op_str == "->":
+            # ->arr[i] where arr is ref to array: reorder to (*arr)[i]
+            if isinstance(node.operand, Index):
+                obj = node.operand.obj
+                obj_type = self.type_map.get(id(obj))
+                if isinstance(obj_type, RefType) and isinstance(obj_type.inner, ArrayType):
+                    return f"(*{self.generate(obj)})[{self.generate(node.operand.idx)}]"
             op_str = "*"
 
         return f"({op_str}{self.generate(node.operand)})"
 
     def visit_Call(self, node: Call) -> str:
         args = ", ".join(self.generate(arg) for arg in node.args)
+        if (
+            isinstance(node.callee, FieldAccess)
+            and isinstance(node.callee.obj, Ident)
+            and node.callee.obj.name == "c"
+        ):
+            field_name = (
+                node.callee.field
+                if isinstance(node.callee.field, str)
+                else getattr(node.callee.field, "name", str(node.callee.field))
+            )
+            return f"{field_name}({args})"
         return f"{self.generate(node.callee)}({args})"
+
+    def visit_TypeArg(self, node: TypeArg) -> str:
+        return self.fmt_type(node.type)
 
     def visit_FieldAccess(self, node: FieldAccess) -> str:
         obj_code = self.generate(node.obj)
@@ -324,6 +364,9 @@ class CodeGenerator:
         return f"{obj_code}.{field_name}"
 
     def visit_Index(self, node: Index) -> str:
+        obj_type = self.type_map.get(id(node.obj))
+        if isinstance(obj_type, RefType) and isinstance(obj_type.inner, ArrayType):
+            return f"(*{self.generate(node.obj)})[{self.generate(node.idx)}]"
         return f"{self.generate(node.obj)}[{self.generate(node.idx)}]"
 
     def visit_ArrayInit(self, node: ArrayInit) -> str:
@@ -352,3 +395,7 @@ class CodeGenerator:
 
     def visit_BoolLit(self, node: BoolLit) -> str:
         return "true" if node.value else "false"
+
+    def visit_NullLit(self, node: NullLit) -> str:
+        _ = node
+        return "NULL"

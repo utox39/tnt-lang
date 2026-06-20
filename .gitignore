@@ -172,6 +172,17 @@ tempCodeRunnerFile.py
 .pypirc
 
 
-# ignores C files (our output)
+# Ignores C files (the transpiler output)
 *.c
+
+# Ignores C headers files
 *.h
+
+# Ignores LLM logs
+*.log
+
+# Ignores compiled C code
+output/
+
+# Ignores LLM-generated TNT programs
+programs/

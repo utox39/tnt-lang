@@ -8,6 +8,8 @@ from ast_nodes import (
     BinOp,
     Block,
     BoolLit,
+    NullLit,
+    NullType,
     BreakStmt,
     Call,
     CastExpr,
@@ -39,14 +41,12 @@ from ast_nodes import (
     TntString,
     TntVar,
     Type,
+    TypeArg,
+    CType,
     UnaryOp,
     VarDeclStmt,
     WhileStmt,
 )
-
-# ==========================================
-# ERROR REPORTING ENGINE
-# ==========================================
 
 
 class TntSemanticError(Exception):
@@ -58,6 +58,7 @@ class TntSemanticError(Exception):
         line: Any = "?",
         col: Any = "?",
         source_line: str | None = None,
+        colored: bool = True,
     ) -> None:
         self.title = title
         self.details = details
@@ -65,23 +66,24 @@ class TntSemanticError(Exception):
         self.line = line
         self.col = col
         self.source_line = source_line
+        self.colored = colored
 
     def print_and_exit(self) -> NoReturn:
-        red = "\033[1;31m"
-        yellow = "\033[1;33m"
-        blue = "\033[1;36m"
-        reset = "\033[0m"
+        red = "\033[1;31m" if self.colored else ""
+        yellow = "\033[1;33m" if self.colored else ""
+        blue = "\033[1;36m" if self.colored else ""
+        reset = "\033[0m" if self.colored else ""
 
         location = f"{blue}[Line {self.line}, Col {self.col}]{reset}"
 
         print(f"\n{red}Error: {self.title}{reset} {location}")
-        print(f"   {self.details}")
+        print(f"    {self.details}")
 
         if self.source_line is not None:
             gutter = f"{self.line}"
             print(f"\n  {gutter} | {self.source_line}")
             col = self.col if isinstance(self.col, int) else 1
-            caret_pad = " " * (len(gutter) + 4 + col - 1)
+            caret_pad = " " * (len(gutter) + 4 + col)
             print(f"{caret_pad}^")
 
         if self.hint:
@@ -97,6 +99,8 @@ def type_to_str(t: Type | None) -> str:
         return t.name
     elif isinstance(t, RefType):
         return f"ref {type_to_str(t.inner)}"
+    elif isinstance(t, NullType):
+        return "null"
     else:  # It must be ArrayType
         return f"{type_to_str(t.element)}[]"
 
@@ -107,10 +111,11 @@ def type_to_str(t: Type | None) -> str:
 
 
 class SymbolTable:
-    def __init__(self, source_lines: list[str] | None = None) -> None:
+    def __init__(self, source_lines: list[str] | None = None, colored: bool = True) -> None:
         self.scopes: list[dict[str, Type]] = [{}]
         self.structs: dict[str, dict[str, Type]] = {}
         self.source_lines = source_lines
+        self.colored = colored
 
     def enter_scope(self) -> None:
         self.scopes.append({})
@@ -131,7 +136,10 @@ class SymbolTable:
                 hint="Try renaming this variable.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
         current_scope[name] = var_type
@@ -147,7 +155,10 @@ class SymbolTable:
             hint=f"Did you forget to declare it with 'let {name}: type;'?",
             line=line,
             col=getattr(node, "column", "?"),
-            source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+            source_line=self.source_lines[line - 1]
+            if (self.source_lines and isinstance(line, int))
+            else None,
+            colored=self.colored,
         )
         err.print_and_exit()
 
@@ -162,7 +173,10 @@ class SymbolTable:
                 hint="Rename this struct.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
         self.structs[name] = fields
@@ -176,7 +190,10 @@ class SymbolTable:
                 hint="Ensure the struct is declared before you use it.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
         return self.structs[name]
@@ -188,9 +205,10 @@ class SymbolTable:
 
 
 class SemanticAnalyzer:
-    def __init__(self, source_lines: list[str] | None = None) -> None:
+    def __init__(self, source_lines: list[str] | None = None, colored: bool = True) -> None:
         self.source_lines = source_lines
-        self.symtab = SymbolTable(source_lines=source_lines)
+        self.colored = colored
+        self.symtab = SymbolTable(source_lines=source_lines, colored=colored)
         self.current_function_return_type: Type | None = None
         self.loop_depth: int = 0
 
@@ -219,6 +237,11 @@ class SemanticAnalyzer:
     def expect_type(
         self, expected: Type, actual: Type, context: str, node: Any
     ) -> None:
+        if isinstance(actual, CType):
+            return
+        if isinstance(actual, NullType):
+            if isinstance(expected, RefType):
+                return
         if expected != actual:
             exp_str = type_to_str(expected)
             act_str = type_to_str(actual)
@@ -229,7 +252,10 @@ class SemanticAnalyzer:
                 hint="Check your variable declarations and arithmetic.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -280,7 +306,10 @@ class SemanticAnalyzer:
                     hint="Ensure all fields within a struct have unique names.",
                     line=line,
                     col=getattr(node, "column", "?"),
-                    source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                    source_line=self.source_lines[line - 1]
+                    if (self.source_lines and isinstance(line, int))
+                    else None,
+                    colored=self.colored,
                 )
                 err.print_and_exit()
             fields[field.name] = field.type
@@ -296,6 +325,17 @@ class SemanticAnalyzer:
         for stmt in node.stmts:
             self.analyze(stmt)
         self.symtab.exit_scope()
+
+    @staticmethod
+    def _is_string_to_char_array(target: Type, value: Type) -> bool:
+        return (
+            isinstance(target, ArrayType)
+            and isinstance(target.element, PlainType)
+            and target.element.name == "char"
+            and isinstance(value, RefType)
+            and isinstance(value.inner, PlainType)
+            and value.inner.name == "char"
+        )
 
     def visit_VarDeclStmt(self, node: VarDeclStmt) -> None:
         if node.init:
@@ -313,9 +353,14 @@ class SemanticAnalyzer:
                         hint="Ensure the array literal elements match the declared element type.",
                         line=line,
                         col=getattr(node, "column", "?"),
-                        source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                        source_line=self.source_lines[line - 1]
+                        if (self.source_lines and isinstance(line, int))
+                        else None,
+                        colored=self.colored,
                     )
                     err.print_and_exit()
+            elif self._is_string_to_char_array(node.type, init_type):
+                pass  # char[N] = "string literal" is valid
             else:
                 self.expect_type(
                     node.type, init_type, f"the initialization of '{node.name}'", node
@@ -384,7 +429,10 @@ class SemanticAnalyzer:
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -397,7 +445,10 @@ class SemanticAnalyzer:
                 hint="Remove this statement or ensure it is wrapped in a 'while' or 'for' block.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -430,7 +481,8 @@ class SemanticAnalyzer:
     def visit_Assign(self, node: Assign) -> Type:
         target_type = self.analyze(node.target)
         value_type = self.analyze(node.value)
-        self.expect_type(target_type, value_type, "an assignment operation", node)
+        if not self._is_string_to_char_array(target_type, value_type):
+            self.expect_type(target_type, value_type, "an assignment operation", node)
         return target_type
 
     def visit_BinOp(self, node: BinOp) -> Type:
@@ -441,9 +493,13 @@ class SemanticAnalyzer:
             return isinstance(t, PlainType) and t.name == name
 
         if node.op in ["==", "!=", "<", ">", "<=", ">=", "&&", "||"]:
-            return PlainType("int")
+            return PlainType("bool")
 
         if node.op in ["+", "-", "*", "/", "%"]:
+            if isinstance(left_type, CType):
+                return right_type
+            if isinstance(right_type, CType):
+                return left_type
             if left_type == right_type:
                 return left_type
 
@@ -458,7 +514,10 @@ class SemanticAnalyzer:
                         hint="Both operands must be integers.",
                         line=line,
                         col=getattr(node, "column", "?"),
-                        source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                        source_line=self.source_lines[line - 1]
+                        if (self.source_lines and isinstance(line, int))
+                        else None,
+                        colored=self.colored,
                     )
                     err.print_and_exit()
                 return PlainType("float")
@@ -472,7 +531,10 @@ class SemanticAnalyzer:
                 hint="You may need to explicitly cast one of the variables using the 'as' keyword.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -487,11 +549,35 @@ class SemanticAnalyzer:
                 return operand_type.inner
         return operand_type
 
+    def _is_c_call(self, node: Call) -> bool:
+        return (
+            isinstance(node.callee, FieldAccess)
+            and isinstance(node.callee.obj, Ident)
+            and node.callee.obj.name == "c"
+        )
+
     def visit_Call(self, node: Call) -> Type:
+        if self._is_c_call(node):
+            return CType()
         return_type = self.analyze(node.callee)
         for arg in node.args:
             self.analyze(arg)
         return return_type
+
+    def visit_TypeArg(self, node: TypeArg) -> Type:
+        line = getattr(node, "line", "?")
+        err = TntSemanticError(
+            title="Type Used as Expression",
+            details="A type name cannot be used as an expression here.",
+            hint="Type name arguments are only valid in C extern calls (c.funcname(...)).",
+            line=line,
+            col=getattr(node, "column", "?"),
+            source_line=self.source_lines[line - 1]
+            if (self.source_lines and isinstance(line, int))
+            else None,
+            colored=self.colored,
+        )
+        err.print_and_exit()
 
     def visit_FieldAccess(self, node: FieldAccess) -> Type:
         obj_type = self.analyze(node.obj)
@@ -508,7 +594,10 @@ class SemanticAnalyzer:
                 hint="Ensure the variable is a valid struct or a reference to a struct.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -529,7 +618,10 @@ class SemanticAnalyzer:
                 hint=f"Check the definition of '{struct_name}' for valid fields.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -541,7 +633,10 @@ class SemanticAnalyzer:
         if isinstance(obj_type, ArrayType):
             return obj_type.element
         if isinstance(obj_type, RefType):
-            return obj_type.inner
+            inner = obj_type.inner
+            if isinstance(inner, ArrayType):
+                return inner.element
+            return inner
         return PlainType("unknown")
 
     def visit_CastExpr(self, node: CastExpr) -> Type:
@@ -559,7 +654,10 @@ class SemanticAnalyzer:
                 hint="Structs cannot be directly cast. You must access their individual fields.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -574,7 +672,10 @@ class SemanticAnalyzer:
                 hint="Add at least one element to the array literal, e.g. [0].",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -587,7 +688,10 @@ class SemanticAnalyzer:
                 hint="Array literals only support plain types such as int, char, or float.",
                 line=line,
                 col=getattr(node, "column", "?"),
-                source_line=self.source_lines[line - 1] if (self.source_lines and isinstance(line, int)) else None,
+                source_line=self.source_lines[line - 1]
+                if (self.source_lines and isinstance(line, int))
+                else None,
+                colored=self.colored,
             )
             err.print_and_exit()
 
@@ -619,4 +723,8 @@ class SemanticAnalyzer:
 
     def visit_BoolLit(self, node: BoolLit) -> PlainType:
         _ = node
-        return PlainType("int")
+        return PlainType("bool")
+
+    def visit_NullLit(self, node: NullLit) -> NullType:
+        _ = node
+        return NullType()

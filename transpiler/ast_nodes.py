@@ -28,7 +28,21 @@ class ArrayType:
     size: Optional[Expr]
 
 
-Type = Union[RefType, PlainType, ArrayType]
+@dataclass
+class CType:
+    """Opaque return type for c.* external calls — bypasses type checking."""
+
+    pass
+
+
+@dataclass
+class NullType:
+    """Type of the null literal — assignable to any ref type."""
+
+    pass
+
+
+Type = Union[RefType, PlainType, ArrayType, CType, NullType]
 
 
 # === EXPRESSIONS ===
@@ -61,6 +75,13 @@ class StringLit:
 @dataclass
 class BoolLit:
     value: bool
+
+
+@dataclass
+class NullLit:
+    """null pointer literal."""
+
+    pass
 
 
 @dataclass
@@ -148,12 +169,20 @@ class ArrayInit:
     elements: list[Expr]
 
 
+@dataclass
+class TypeArg:
+    """A type name used as a call argument (e.g., c.sizeof(float))."""
+
+    type: Type
+
+
 Expr = Union[
     IntLit,
     FloatLit,
     CharLit,
     StringLit,
     BoolLit,
+    NullLit,
     Ident,
     Assign,
     BinOp,
@@ -163,6 +192,7 @@ Expr = Union[
     Index,
     CastExpr,
     ArrayInit,
+    TypeArg,
 ]
 
 
