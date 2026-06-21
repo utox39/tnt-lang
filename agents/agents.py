@@ -15,7 +15,7 @@ import ollama
 # ============================================================
 
 OLLAMA_HOST = os.environ["TNT_OLLAMA_HOST"]
-OLLAMA_MODEL = os.environ["TNT_OLLAMA_HOST"]
+OLLAMA_MODEL = os.environ["TNT_OLLAMA_MODEL"]
 NUM_PROGRAMS = 100
 MAX_ATTEMPTS = 3
 
