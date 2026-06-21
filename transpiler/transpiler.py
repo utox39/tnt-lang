@@ -1,4 +1,7 @@
 import argparse
+from dataclasses import field
+import os
+import subprocess
 
 from lark import Lark
 
@@ -15,6 +18,7 @@ def main():
     )
     args = parser.parse_args()
     filepath = args.filepath
+    filename = os.path.basename(filepath)[:-4]
 
     source_code = ""
     with open(filepath) as f:
@@ -40,10 +44,14 @@ def main():
     generator = CodeGenerator(analyzer.type_map)
     c_code = generator.generate(ast)
 
-    with open("output.c", "w") as f:
+    with open(f"{filename}.c", "w") as f:
         f.write(c_code)
 
-    print("== INFO == Compilation successful. Output written to 'output.c'.")
+    print(f"== INFO == Compilation successful. Output written to '{filename}.c'.")
+
+    subprocess.run(
+        ["gcc", f"{filename}.c", "-o", filename],
+    )
 
 
 if __name__ == "__main__":
