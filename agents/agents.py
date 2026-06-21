@@ -6,9 +6,7 @@ import re
 import shutil
 import subprocess
 
-# from dataclasses import dataclass
 from pathlib import Path
-# from typing import List
 
 import ollama
 
@@ -34,18 +32,6 @@ LOG_FILE = AGENTS_DIR / "agent_run.log"
 GRAMMAR = (TRANSPILER_DIR / "tnt.lark").read_text()
 EXAMPLE = (TRANSPILER_DIR / "example.tnt").read_text()
 
-
-# ============================================================
-# Stats
-# ============================================================
-
-
-# @dataclass
-# class Stats:
-#     program_number: int
-#     success: bool
-#     attempts: int
-#
 
 # ============================================================
 # Setup
@@ -245,30 +231,6 @@ def compile_program(tnt_path: Path, program_number: int) -> tuple[bool, str]:
 
 
 # ============================================================
-# Statistics
-# ============================================================
-
-
-# TODO: change with the real statistics
-#
-# def generate_statistics(stats: List[Stats]) -> None:
-#     total = len(stats)
-#     succeeded = sum(1 for s in stats if s.success)
-#     failed = total - succeeded
-#     avg_attempts = sum(s.attempts for s in stats) / total if total else 0.0
-#
-#     summary = (
-#         "\n=== RUN STATISTICS ===\n"
-#         f"Total programs : {total}\n"
-#         f"Succeeded      : {succeeded}\n"
-#         f"Failed         : {failed}\n"
-#         f"Avg attempts   : {avg_attempts:.2f}\n"
-#     )
-#     logging.info(summary)
-#     print(summary)
-#
-
-# ============================================================
 # Main loop
 # ============================================================
 
@@ -282,8 +244,6 @@ def main() -> None:
     )
 
     successful_program = EXAMPLE
-
-    # stats_list: List[Stats] = []
 
     for i in range(1, NUM_PROGRAMS + 1):
         print(f"[Program {i}/{NUM_PROGRAMS}] Generating...", flush=True)
@@ -336,9 +296,6 @@ def main() -> None:
             attempts,
             f" | error: {last_error[:200]}" if not success else "",
         )
-        # stats_list.append(Stats(i, success, attempts))
-
-    # generate_statistics(stats_list)
 
 
 if __name__ == "__main__":
