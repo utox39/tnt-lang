@@ -174,6 +174,13 @@ Compilatore usato: #link("https://gcc.gnu.org/")[GCC]
 
 Comando di compilazione usato: ```sh gcc -o output output.c```
 
+Ogni file valido ha come suffisso `_success.tnt`, quindi per calcolare il numero di programmi validi è stato eseguito il seguente comando
+nella directory dei programmi generati:
+
+```bash
+ls -lah | grep success | wc -l
+```
+
 $"Validity Rate" = ("numero di programmi che compilano") / ("numero di programmi prodotti totali") * 100%$
 
 _Validity Rate_ $= (62) / (100) * 100% = 62%$
@@ -213,7 +220,7 @@ Questa seconda versione, come la prima, ci ha permesso di trovare alcuni bug di 
 Il numero di programmi validi (_validity_) è più alto (62%) rispetto a quello della prima versione ($55%$) ma ha una _diversity_ inferiore ($1135$ vs $1861$) e
 una coverage inferiore ($47.41%$ vs $50.37%$).
 
-Quindi possiamo dire che la prima versione dell'agents loop ha delle statistiche più equilibrate. I motivi principale di tali differenze nelle statistiche sono:
+Quindi possiamo dire che la prima versione dell'agents loop ha delle statistiche più equilibrate. I motivi principali di tali differenze nelle statistiche sono:
 - l'uso di due modelli diversi: #link("https://ollama.com/library/qwen3-coder")[qwen3-coder:30b] e #link("https://ollama.com/library/devstral")[devstral:24b]
 - cambiamenti ai prompt
 - cambiamenti al programma d'esempio
