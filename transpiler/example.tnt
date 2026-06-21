@@ -1,5 +1,5 @@
 import stdio.h
-import local ./example.h
+// import local ./example.h
 
 // This is how to declare custom type
 struct Point {
@@ -99,6 +99,7 @@ fn main() -> int {
   defer c.free(ptr);
   // Check if `ptr` is null
   if (ptr == null) {
+    // You can use the `tnt` keyword to panic
     tnt "ptr is null";
   }
 
