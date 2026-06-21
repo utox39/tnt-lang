@@ -1,0 +1,66 @@
+import stdio.h
+
+fn add(a: float, b: float) -> float {
+  return a + b;
+}
+
+fn sub(a: float, b: float) -> float {
+  return a - b;
+}
+
+fn mul(a: float, b: float) -> float {
+  return a * b;
+}
+
+fn division(a: float, b: float) -> float {
+  if (b == 0.0) {
+    tnt "Division by zero";
+  }
+
+  return a / b;
+}
+
+fn main() -> int {
+  let op: int = 0;
+  let a: float = 0.0;
+  let b: float = 0.0;
+
+  defer printf("Bye bye\n");
+
+  while (op != -1) {
+
+    printf("Available operations:\n");
+    printf("1: addition\n");
+    printf("2: subtraction\n");
+    printf("3: multiplication\n");
+    printf("4: division\n");
+    printf("-1: exit\n");
+
+    printf("Enter the operation number\n>>> ");
+    c.scanf("%d", addr op);
+
+    if (op == -1) {
+      break;
+    }
+
+    printf("Enter the first operand\n>>> ");
+    c.scanf("%f", addr a);
+
+    printf("Enter the second operand\n>>> ");
+    c.scanf("%f", addr b);
+
+    if (op == 1) {
+      printf("%f + %f = %f\n\n", a, b, add(a, b));
+    } else if (op == 2) {
+      printf("%f - %f = %f\n\n", a, b, sub(a, b));
+    } else if (op == 3) {
+      printf("%f * %f = %f\n\n", a, b, mul(a, b));
+    } else if (op == 4) {
+      printf("%f / %f = %f\n\n", a, b, division(a, b));
+    } else {
+      tnt "Invalid operation";
+    }
+  }
+
+  return 0;
+}
