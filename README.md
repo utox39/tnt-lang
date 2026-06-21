@@ -2,8 +2,9 @@
 
 Available languages: [en](https://github.com/utox39/tnt-lang/blob/main/README.md), [it](https://github.com/utox39/tnt-lang/blob/main/README_it.md)
 
-- Project for the "Elements of Programming Language Engineering" course (2025/2026) at [University of Salerno](https://www.unisa.it/)
-- Authors: [Domenico Iorio](https://github.com/Blade990), [Vittorio Landi](https://github.com/toyo54), [Francesco Moccaldi](https://github.com/utox39)
+Project for the "Elements of Programming Language Engineering" course (2025/2026) at [University of Salerno](https://www.unisa.it/)
+
+Authors: [Domenico Iorio](https://github.com/Blade990), [Vittorio Landi](https://github.com/toyo54), [Francesco Moccaldi](https://github.com/utox39)
 
 - [Description](#description)
 - [Requirements](#requirements)

@@ -2,8 +2,9 @@
 
 Lingue disponibili: [en](https://github.com/utox39/tnt-lang/blob/main/README.md), [it](https://github.com/utox39/tnt-lang/blob/main/README_it.md)
 
-- Progetto per il corso di "Elementi di Ingegneria dei Linguaggi di Programmazione" (2025/2026) presso [Università degli Studi di Salerno](https://www.unisa.it/)
-- Autori: [Domenico Iorio](https://github.com/Blade990), [Vittorio Landi](https://github.com/toyo54), [Francesco Moccaldi](https://github.com/utox39)
+Progetto per il corso di "Elementi di Ingegneria dei Linguaggi di Programmazione" (2025/2026) presso [Università degli Studi di Salerno](https://www.unisa.it/)
+
+Autori: [Domenico Iorio](https://github.com/Blade990), [Vittorio Landi](https://github.com/toyo54), [Francesco Moccaldi](https://github.com/utox39)
 
 - [Descrizione](#descrizione)
 - [Requisiti](#requisiti)
