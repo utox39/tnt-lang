@@ -79,8 +79,8 @@ flowchart LR
     RP -->|candidate program| C
 ```
 
-- Agents Loop v1 Report: [report.pdf]() (Italian only)
-- Agents Loop v2 Report: [report.pdf]() (Italian only)
+- Agents Loop v1 Report: [report.pdf](https://github.com/utox39/tnt-lang/blob/main/agents/agents_loop_v1/report.pdf) (Italian only)
+- Agents Loop v2 Report: [report.pdf](https://github.com/utox39/tnt-lang/blob/main/agents/agents_loop_v2/report.pdf) (Italian only)
 
 The agents loop was run locally using [Ollama](https://ollama.com/)
 
