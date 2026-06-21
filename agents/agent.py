@@ -1,6 +1,7 @@
 ### One agent pattern ###
 
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -15,8 +16,8 @@ import ollama
 # Configuration
 # ============================================================
 
-OLLAMA_HOST = "http://192.168.0.218:11434"
-OLLAMA_MODEL = "qwen3-coder:30b"
+OLLAMA_HOST = os.environ["TNT_OLLAMA_HOST"]
+OLLAMA_MODEL = os.environ["TNT_OLLAMA_HOST"]
 NUM_PROGRAMS = 100
 MAX_ATTEMPTS = 3
 
