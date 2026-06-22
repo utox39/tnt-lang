@@ -108,6 +108,6 @@ python3 agents.py
 ## Docs
 
 - Language reference manual: [reference.pdf](https://github.com/utox39/tnt-lang/blob/main/docs/reference.pdf)
-- AI usage report: [ai_report.pdf](https://github.com/utox39/tnt-lang/blob/main/docs/reference.pdf)
+- AI usage report: [ai_report.pdf](https://github.com/utox39/tnt-lang/blob/main/docs/ai_report.pdf)
 - Agents Loop v1 Report: [report.pdf](https://github.com/utox39/tnt-lang/blob/main/agents/agents_loop_v1/report.pdf)
 - Agents Loop v2 Report: [report.pdf](https://github.com/utox39/tnt-lang/blob/main/agents/agents_loop_v2/report.pdf)
